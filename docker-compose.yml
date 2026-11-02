@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16
+    container_name: pod-register-db
+    environment:
+      POSTGRES_DB: podregister
+      POSTGRES_USER: pod
+      POSTGRES_PASSWORD: pod
+    ports:
+      - "5432:5432"
+    volumes:
+      - pod_data:/var/lib/postgresql/data
+volumes:
+  pod_data:
