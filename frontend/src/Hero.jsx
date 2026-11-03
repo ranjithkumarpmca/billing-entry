@@ -78,7 +78,7 @@ export default function Hero({ children }) {
         ) : (
           <div className="wordmark"><span>FRANCH EXPRESS</span><em>COURIER</em></div>
         )}
-        <p className="eyebrow-light">Chennai · Since 1987</p>
+        <p className="eyebrow-light">Erode · Since 1987</p>
       </div>
       <div className="hero-title">
         <h1>Billing Entry</h1>
@@ -93,7 +93,7 @@ export default function Hero({ children }) {
 export function Foot() {
   return (
     <footer className="foot noprint">
-      <p>© {new Date().getFullYear()} Franch Express Courier Pvt. Ltd. · Chennai</p>
+      <p>© {new Date().getFullYear()} Franch Express Courier Pvt. Ltd. · Erode</p>
     </footer>
   );
 }
