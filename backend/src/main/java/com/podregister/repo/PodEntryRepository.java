@@ -20,4 +20,6 @@ public interface PodEntryRepository extends JpaRepository<PodEntry, Long> {
     List<String> findExisting(@Param("numbers") Collection<String> numbers);
 
     boolean existsByPodNumberAndIdNot(String podNumber, Long id);
+
+    long countByCustomerId(Long customerId);
 }

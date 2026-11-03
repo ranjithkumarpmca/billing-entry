@@ -11,6 +11,16 @@ start "POD Backend" cmd /k "cd /d %~dp0backend && mvn spring-boot:run"
 echo Starting frontend...
 start "POD Frontend" cmd /k "cd /d %~dp0frontend && npm run dev"
 
-echo Waiting for servers...
-timeout /t 25 /nobreak >nul
+echo Waiting for backend...
+set /a tries=0
+:waitbackend
+set /a tries+=1
+if %tries% GTR 30 goto openchrome
+curl -s -o nul http://localhost:8080/api/entries
+if errorlevel 1 (
+  timeout /t 2 /nobreak >nul
+  goto waitbackend
+)
+
+:openchrome
 start chrome http://localhost:5173

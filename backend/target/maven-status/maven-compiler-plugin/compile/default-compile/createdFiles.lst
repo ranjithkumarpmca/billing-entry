@@ -1,9 +1,17 @@
+com\podregister\model\Customer.class
 com\podregister\service\DuplicatePodException.class
+com\podregister\web\CustomerRequest.class
 com\podregister\service\EntryService.class
+com\podregister\service\InvoiceService.class
 com\podregister\PodRegisterApplication.class
 com\podregister\web\EntryController.class
 com\podregister\service\AmountCalculator.class
 com\podregister\repo\PodEntryRepository.class
+com\podregister\web\CustomerController.class
+com\podregister\web\InvoiceController.class
+com\podregister\service\CustomerService.class
+com\podregister\repo\CustomerRepository.class
+com\podregister\web\CustomerResponse.class
 com\podregister\web\EntryResponse.class
 com\podregister\service\ExcelExporter.class
 com\podregister\web\EntryRequest.class

@@ -1,17 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import DestCell from "./DestCell.jsx";
-import { deleteEntry, deleteMatching, exportUrl, fetchEntries, updateEntry } from "./api.js";
+import { flushSync } from "react-dom";
+import { deleteEntry, deleteMatching, exportUrl, fetchEntries, getInvoiceNo, updateEntry } from "./api.js";
+import InvoicePrint from "./InvoicePrint.jsx";
+import { PencilIcon, TrashIcon } from "./icons.jsx";
+import { periodOf } from "./invoice.js";
 import { amountFor, blockNonDigit, digits, findTown, fmtDate, fmtRs, parsePod } from "./logic.js";
 
 const PAGE_SIZE = 10;
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-export default function RecordsPage({ active, refreshKey }) {
+export default function RecordsPage({ active, refreshKey, customers = [] }) {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [mon, setMon] = useState(String(now.getMonth() + 1).padStart(2, "0")); // "01".."12" or "all"
   const [search, setSearch] = useState("");
+  const [custId, setCustId] = useState(""); // "" = all customers
   const [applied, setApplied] = useState({
+    customerId: "",
     month: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`,
     search: "",
     label: `${MONTHS[now.getMonth()]} ${now.getFullYear()}`,
@@ -27,6 +33,7 @@ export default function RecordsPage({ active, refreshKey }) {
   const [confirmAll, setConfirmAll] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null); // { kind: "ok" | "err", text }
+  const [invoiceNo, setInvoiceNo] = useState(""); // given by the server when you press Print
 
   const years = useMemo(() => {
     const y = now.getFullYear(), out = [];
@@ -37,7 +44,7 @@ export default function RecordsPage({ active, refreshKey }) {
   const load = async (f, silent) => {
     if (!silent) setState("loading");
     try {
-      setRows(await fetchEntries(f.month, f.search));
+      setRows(await fetchEntries(f.month, f.search, f.customerId));
       setState("ready");
     } catch (e) {
       setError(e.message); setState("error");
@@ -62,12 +69,44 @@ export default function RecordsPage({ active, refreshKey }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [confirmAll, busy]);
 
+  const custName = useMemo(() => {
+    const m = new Map();
+    customers.forEach((c) => m.set(c.id, c.name));
+    return (id) => (id == null ? "—" : m.get(id) || "—");
+  }, [customers]);
+
+  // The bill is made for the customer picked in the filter (after pressing Search).
+  const customer = useMemo(() => customers.find((c) => String(c.id) === String(applied.customerId)) || null, [customers, applied.customerId]);
+  const inv = useMemo(() => {
+    const p = periodOf(applied.month, rows);
+    return { customer: customer?.name || "", place: customer?.place || "", gstin: customer?.gstin || "", invoiceNo, from: p.from, to: p.to, billDate: p.to };
+  }, [customer, invoiceNo, applied.month, rows]);
+  const printBill = async () => {
+    if (!customer) {
+      setMsg({ kind: "err", text: "Pick one customer in the filter, press Search, then Print. A bill is made for one customer." });
+      return;
+    }
+    setMsg(null); setBusy(true);
+    try {
+      // The server gives this customer + month their invoice number (the same one every time).
+      const no = await getInvoiceNo(applied.month, customer.id);
+      flushSync(() => setInvoiceNo(String(no)));
+      window.print();
+    } catch (e) {
+      setMsg({ kind: "err", text: e.message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const resetEditing = () => { setEditId(null); setDraft(null); setDelId(null); setConfirmAll(false); };
 
   const runSearch = () => {
-    const f = mon === "all"
+    const who = customers.find((c) => String(c.id) === custId)?.name;
+    const base = mon === "all"
       ? { month: "all", search, label: "All months" }
       : { month: `${year}-${mon}`, search, label: `${MONTHS[Number(mon) - 1]} ${year}` };
+    const f = { ...base, customerId: custId, label: base.label + (who ? ` · ${who}` : "") };
     setApplied(f); setMsg(null); resetEditing(); setPage(1);
     load(f);
   };
@@ -88,7 +127,7 @@ export default function RecordsPage({ active, refreshKey }) {
   const startEdit = (r) => {
     setMsg(null); setDelId(null); setConfirmAll(false);
     setEditId(r.id);
-    setDraft({ date: r.entryDate, pod: r.podNumber, dest: r.destination, weight: String(r.weightGrams) });
+    setDraft({ date: r.entryDate, pod: r.podNumber, dest: r.destination, weight: String(r.weightGrams), customerId: r.customerId ?? null });
   };
   const patchDraft = (k, v) => setDraft((d) => ({ ...d, [k]: v }));
 
@@ -100,7 +139,7 @@ export default function RecordsPage({ active, refreshKey }) {
     if (problem) { setMsg({ kind: "err", text: problem }); return; }
     setBusy(true); setMsg(null);
     try {
-      await updateEntry(editId, { podNumber: draft.pod, entryDate: draft.date, destination: town, weightGrams: Number(draft.weight) });
+      await updateEntry(editId, { podNumber: draft.pod, entryDate: draft.date, destination: town, weightGrams: Number(draft.weight), customerId: draft.customerId });
       resetEditing();
       setMsg({ kind: "ok", text: "Entry updated." });
       await load(applied, true);
@@ -128,7 +167,7 @@ export default function RecordsPage({ active, refreshKey }) {
   const removeAll = async () => {
     setBusy(true); setMsg(null);
     try {
-      const res = await deleteMatching(applied.month, applied.search);
+      const res = await deleteMatching(applied.month, applied.search, applied.customerId);
       resetEditing();
       setMsg({ kind: "ok", text: `${res.deleted} entries deleted.` });
       await load(applied, true);
@@ -143,7 +182,7 @@ export default function RecordsPage({ active, refreshKey }) {
   return (
     <>
       <section className="panel noprint" aria-label="Filter">
-        <form className="gen" onSubmit={(e) => { e.preventDefault(); runSearch(); }}>
+        <form className="gen filter-row" onSubmit={(e) => { e.preventDefault(); runSearch(); }}>
           <div className="field">
             <label htmlFor="mon">Month</label>
             <select id="mon" value={mon} onChange={(e) => setMon(e.target.value)}>
@@ -158,6 +197,13 @@ export default function RecordsPage({ active, refreshKey }) {
             </select>
           </div>
           <div className="field">
+            <label htmlFor="cust-f">Customer</label>
+            <select id="cust-f" value={custId} onChange={(e) => setCustId(e.target.value)}>
+              <option value="">All customers</option>
+              {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div className="field">
             <label htmlFor="q">POD number or town (optional)</label>
             <input id="q" type="text" value={search} placeholder="e.g. Madurai" autoComplete="off" onChange={(e) => setSearch(e.target.value)} />
           </div>
@@ -167,15 +213,15 @@ export default function RecordsPage({ active, refreshKey }) {
 
       {msg && <div className={"banner noprint " + msg.kind} role="status"><span>{msg.text}</span></div>}
 
-      <section className="panel fill" aria-label="Records">
+      <section className="panel fill noprint" aria-label="Records">
         <div className="toolbar noprint">
           <div className="grp">
             <p className="eyebrow" style={{ margin: 0 }}>{applied.label} · {rows.length} entries</p>
           </div>
           {rows.length > 0 && (
             <div className="grp">
-              <a className="btn" id="xlsx-link" href={exportUrl(applied.month, applied.search)} download>Download Excel</a>
-              <button id="print-btn" onClick={() => window.print()}>Print</button>
+              <a className="btn" id="xlsx-link" href={exportUrl(applied.month, applied.search, applied.customerId)} download>Download Excel</a>
+              <button id="print-btn" disabled={busy} onClick={printBill}>Print</button>
               <button className="danger" id="delete-all" disabled={busy} onClick={() => { setConfirmAll(true); setEditId(null); setDelId(null); }}>Delete all</button>
             </div>
           )}
@@ -198,7 +244,7 @@ export default function RecordsPage({ active, refreshKey }) {
             <table>
               <thead>
                 <tr>
-                  <th>S.No</th><th>Date</th><th>POD number</th><th>Destination</th>
+                  <th>S.No</th><th>Date</th><th>Customer</th><th>POD number</th><th>Destination</th>
                   <th className="num">Weight (g)</th><th className="num">Amount</th><th className="noprint"></th>
                 </tr>
               </thead>
@@ -210,6 +256,7 @@ export default function RecordsPage({ active, refreshKey }) {
                       <tr key={r.id} className={"editing" + (i >= from && i < from + PAGE_SIZE ? "" : " pg-hide")}>
                         <td className="sno ro">{i + 1}</td>
                         <td><input id="edit-date" type="date" value={draft.date} onChange={(e) => patchDraft("date", e.target.value)} aria-label="Date" /></td>
+                        <td className="ro">{custName(draft.customerId)}</td>
                         <td><input id="edit-pod" className={"pod" + (parsePod(draft.pod).err ? " bad" : "")} type="text" inputMode="numeric" pattern="[0-9]*"
                           maxLength={11} value={draft.pod} onKeyDown={blockNonDigit} onChange={(e) => patchDraft("pod", digits(e.target.value))} aria-label="POD number" /></td>
                         <td><DestCell id="edit-dest" value={draft.dest} onChange={(v) => patchDraft("dest", v)} onPick={(t) => patchDraft("dest", t)} /></td>
@@ -227,6 +274,7 @@ export default function RecordsPage({ active, refreshKey }) {
                     <tr key={r.id} className={i >= from && i < from + PAGE_SIZE ? "" : "pg-hide"}>
                       <td className="sno ro">{i + 1}</td>
                       <td className="ro">{fmtDate(r.entryDate)}</td>
+                      <td className="ro">{custName(r.customerId)}</td>
                       <td className="ro mono">{r.podNumber}</td>
                       <td className="ro">{r.destination}</td>
                       <td className="ro num">{r.weightGrams}</td>
@@ -240,8 +288,8 @@ export default function RecordsPage({ active, refreshKey }) {
                           </>
                         ) : (
                           <>
-                            <button className="row-edit" aria-label={`Edit row ${i + 1}`} onClick={() => startEdit(r)}>Edit</button>
-                            <button className="ghost danger-text row-del" aria-label={`Delete row ${i + 1}`} onClick={() => { setDelId(r.id); setEditId(null); setConfirmAll(false); }}>Delete</button>
+                            <button className="icon-btn edit row-edit" title="Edit" aria-label={`Edit row ${i + 1}`} onClick={() => startEdit(r)}><PencilIcon /></button>
+                            <button className="icon-btn del row-del" title="Delete" aria-label={`Delete row ${i + 1}`} onClick={() => { setDelId(r.id); setEditId(null); setConfirmAll(false); }}><TrashIcon /></button>
                           </>
                         )}
                       </td>
@@ -251,8 +299,8 @@ export default function RecordsPage({ active, refreshKey }) {
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={4}>{rows.length} parcels</td>
-                  <td className="num">{totals.w.toLocaleString("en-IN")} g</td>
+                  <td colSpan={5}>Total</td>
+                  <td></td>
                   <td className="amt">{fmtRs(totals.a)}</td>
                   <td className="noprint"></td>
                 </tr>
@@ -275,6 +323,8 @@ export default function RecordsPage({ active, refreshKey }) {
           </nav>
         )}
       </section>
+
+      {state === "ready" && rows.length > 0 && <InvoicePrint rows={rows} inv={inv} />}
 
       {confirmAll && (
         <div className="overlay noprint" onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) setConfirmAll(false); }}>

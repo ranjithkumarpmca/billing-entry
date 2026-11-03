@@ -8,8 +8,9 @@ import {
 let nextId = 1;
 const mkRow = (pod, date) => ({ id: nextId++, pod, date, dest: "", weight: "" });
 
-export default function EntryPage({ onSaved, onOpenRecords, onHasRows }) {
+export default function EntryPage({ customers = [], onSaved, onOpenRecords, onOpenCustomers, onHasRows }) {
   const [rows, setRows] = useState([]);
+  const [customerId, setCustomerId] = useState("");
   const [first, setFirst] = useState("");
   const [last, setLast] = useState("");
   const [attempted, setAttempted] = useState(false);
@@ -32,6 +33,12 @@ export default function EntryPage({ onSaved, onOpenRecords, onHasRows }) {
   };
 
   useEffect(() => { onHasRows?.(rows.length > 0); }, [rows.length]);
+
+  // One customer only: pick it for you. A deleted customer is dropped from the box.
+  useEffect(() => {
+    if (customerId && !customers.some((c) => String(c.id) === customerId)) setCustomerId("");
+    else if (!customerId && customers.length === 1) setCustomerId(String(customers[0].id));
+  }, [customers]);
 
   // Success messages go away on their own.
   useEffect(() => {
@@ -72,6 +79,10 @@ export default function EntryPage({ onSaved, onOpenRecords, onHasRows }) {
 
   const save = async () => {
     setAttempted(true); setMsg(null);
+    if (!customerId) {
+      setMsg({ kind: "err", text: "Choose the customer for these entries first." });
+      return;
+    }
     if (incomplete > 0) {
       setMsg({ kind: "err", text: `${incomplete} row(s) still need a destination or weight. They are marked in orange.` });
       return;
@@ -80,10 +91,12 @@ export default function EntryPage({ onSaved, onOpenRecords, onHasRows }) {
     try {
       const body = rows.map((r) => ({
         podNumber: r.pod, entryDate: r.date, destination: findTown(r.dest), weightGrams: Number(r.weight),
+        customerId: Number(customerId),
       }));
       const res = await saveEntries(body);
       setRows([]); setFirst(""); setLast(""); setAttempted(false);
-      setMsg({ kind: "ok", text: `${res.saved} entries saved.` });
+      const who = customers.find((c) => String(c.id) === customerId)?.name;
+      setMsg({ kind: "ok", text: `${res.saved} entries saved${who ? " for " + who : ""}.` });
       onSaved?.();
     } catch (e) {
       setMsg({ kind: "err", text: e.message, duplicates: e.duplicates });
@@ -106,6 +119,13 @@ export default function EntryPage({ onSaved, onOpenRecords, onHasRows }) {
       <section className="panel" aria-label="POD series">
         <div className="gen">
           <div className="field">
+            <label htmlFor="cust">Customer</label>
+            <select id="cust" className={attempted && !customerId ? "bad" : ""} value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
+              <option value="">Select customer…</option>
+              {customers.map((c) => <option key={c.id} value={c.id}>{c.name}{c.place ? ` · ${c.place}` : ""}</option>)}
+            </select>
+          </div>
+          <div className="field">
             <label htmlFor="first">Starting POD number</label>
             <input id="first" className={"mono" + (bad ? " bad" : "")} type="text" inputMode="numeric" pattern="[0-9]*"
               maxLength={11} autoComplete="off" placeholder="11 digits" value={first}
@@ -124,6 +144,9 @@ export default function EntryPage({ onSaved, onOpenRecords, onHasRows }) {
           </div>
         </div>
         {preview}
+        {customers.length === 0 && (
+          <p className="note err">No customers yet. <button type="button" className="ghost" onClick={onOpenCustomers}>Add a customer first</button></p>
+        )}
       </section>
 
       {msg && (
@@ -188,8 +211,8 @@ export default function EntryPage({ onSaved, onOpenRecords, onHasRows }) {
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={4}>{rows.length} parcels</td>
-                  <td className="num">{totals.w.toLocaleString("en-IN")} g</td>
+                  <td colSpan={4}>Total</td>
+                  <td></td>
                   <td className="amt">{fmtRs(totals.a)}</td>
                   <td></td>
                 </tr>

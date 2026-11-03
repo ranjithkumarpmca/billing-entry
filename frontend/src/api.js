@@ -17,16 +17,17 @@ export async function saveEntries(entries) {
   return body;
 }
 
-export function query(month, search) {
+export function query(month, search, customerId) {
   const p = new URLSearchParams();
+  if (customerId) p.set("customerId", customerId);
   if (month && month !== "all") p.set("month", month);
   if (search && search.trim()) p.set("search", search.trim());
   const s = p.toString();
   return s ? "?" + s : "";
 }
 
-export async function fetchEntries(month, search) {
-  const res = await fetch("/api/entries" + query(month, search));
+export async function fetchEntries(month, search, customerId) {
+  const res = await fetch("/api/entries" + query(month, search, customerId));
   if (!res.ok) {
     const body = await readJson(res);
     throw new Error(body.message || "Could not load records. Is the backend running?");
@@ -34,7 +35,19 @@ export async function fetchEntries(month, search) {
   return res.json();
 }
 
-export const exportUrl = (month, search) => "/api/entries/export.xlsx" + query(month, search);
+// The server hands out invoice numbers (1, 2, 3 ...). The same customer + month always gets the same number back.
+export async function getInvoiceNo(month, customerId) {
+  const p = new URLSearchParams({ customerId });
+  if (month && month !== "all") p.set("month", month);
+  const res = await fetch("/api/invoices/number?" + p.toString(), { method: "POST" });
+  if (!res.ok) {
+    const body = await readJson(res);
+    throw new Error(body.message || "Could not get the invoice number. Is the backend running?");
+  }
+  return (await res.json()).invoiceNo;
+}
+
+export const exportUrl = (month, search, customerId) => "/api/entries/export.xlsx" + query(month, search, customerId);
 
 async function failWith(res, fallback) {
   const body = await readJson(res);
@@ -58,8 +71,32 @@ export async function deleteEntry(id) {
   if (!res.ok) throw await failWith(res, "Could not delete this entry.");
 }
 
-export async function deleteMatching(month, search) {
-  const res = await fetch("/api/entries" + query(month, search), { method: "DELETE" });
+export async function deleteMatching(month, search, customerId) {
+  const res = await fetch("/api/entries" + query(month, search, customerId), { method: "DELETE" });
   if (!res.ok) throw await failWith(res, "Could not delete these entries.");
   return res.json();
+}
+
+// ---------- customers ----------
+export async function fetchCustomers() {
+  const res = await fetch("/api/customers");
+  if (!res.ok) throw await failWith(res, "Could not load customers. Is the backend running?");
+  return res.json();
+}
+
+export async function createCustomer(c) {
+  const res = await fetch("/api/customers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(c) });
+  if (!res.ok) throw await failWith(res, "Could not add this customer.");
+  return res.json();
+}
+
+export async function updateCustomer(id, c) {
+  const res = await fetch("/api/customers/" + id, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(c) });
+  if (!res.ok) throw await failWith(res, "Could not update this customer.");
+  return res.json();
+}
+
+export async function deleteCustomer(id) {
+  const res = await fetch("/api/customers/" + id, { method: "DELETE" });
+  if (!res.ok) throw await failWith(res, "Could not delete this customer.");
 }

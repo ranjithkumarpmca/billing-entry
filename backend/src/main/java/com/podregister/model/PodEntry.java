@@ -31,7 +31,12 @@ public class PodEntry {
     @Column(name = "amount", nullable = false)
     private int amount;
 
+    @Column(name = "customer_id")
+    private Long customerId;
+
     public Long getId() { return id; }
+    public Long getCustomerId() { return customerId; }
+    public void setCustomerId(Long customerId) { this.customerId = customerId; }
     public String getPodNumber() { return podNumber; }
     public void setPodNumber(String podNumber) { this.podNumber = podNumber; }
     public LocalDate getEntryDate() { return entryDate; }

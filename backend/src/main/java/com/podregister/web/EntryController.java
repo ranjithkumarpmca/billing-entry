@@ -1,8 +1,10 @@
 package com.podregister.web;
 
+import com.podregister.model.Customer;
 import com.podregister.model.PodEntry;
 import com.podregister.service.EntryService;
 import com.podregister.service.ExcelExporter;
+import com.podregister.service.InvoiceService;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -28,9 +30,11 @@ public class EntryController {
             MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 
     private final EntryService service;
+    private final InvoiceService invoices;
 
-    public EntryController(EntryService service) {
+    public EntryController(EntryService service, InvoiceService invoices) {
         this.service = service;
+        this.invoices = invoices;
     }
 
     @PostMapping("/bulk")
@@ -41,8 +45,9 @@ public class EntryController {
 
     @GetMapping
     public List<EntryResponse> list(@RequestParam(required = false) String month,
-                                    @RequestParam(required = false) String search) {
-        return service.find(month, search).stream().map(EntryResponse::from).toList();
+                                    @RequestParam(required = false) String search,
+                                    @RequestParam(required = false) Long customerId) {
+        return service.find(month, search, customerId).stream().map(EntryResponse::from).toList();
     }
 
     @PutMapping("/{id}")
@@ -59,15 +64,20 @@ public class EntryController {
     /** Deletes everything the same month/search filter lists. */
     @DeleteMapping
     public Map<String, Object> deleteMatching(@RequestParam(required = false) String month,
-                                              @RequestParam(required = false) String search) {
-        return Map.of("deleted", service.deleteMatching(month, search));
+                                              @RequestParam(required = false) String search,
+                                              @RequestParam(required = false) Long customerId) {
+        return Map.of("deleted", service.deleteMatching(month, search, customerId));
     }
 
     @GetMapping("/export.xlsx")
     public ResponseEntity<byte[]> export(@RequestParam(required = false) String month,
-                                         @RequestParam(required = false) String search) throws IOException {
-        List<PodEntry> entries = service.find(month, search);
-        byte[] file = ExcelExporter.build(entries);
+                                         @RequestParam(required = false) String search,
+                                         @RequestParam(required = false) Long customerId) throws IOException {
+        List<PodEntry> entries = service.find(month, search, customerId);
+        // One customer chosen: the file is that customer's bill and carries the same invoice number as the printed one.
+        Customer customer = service.customerOrNull(customerId);
+        Long invoiceNo = customer == null ? null : invoices.numberFor(customerId, month);
+        byte[] file = ExcelExporter.build(entries, service.customerNames(), customer, month, invoiceNo);
         String label = (month == null || month.isBlank()) ? "all" : month.trim();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(XLSX);
