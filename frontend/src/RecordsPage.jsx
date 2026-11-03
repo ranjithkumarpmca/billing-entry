@@ -220,7 +220,7 @@ export default function RecordsPage({ active, refreshKey, customers = [] }) {
           </div>
           {rows.length > 0 && (
             <div className="grp">
-              <a className="btn" id="xlsx-link" href={exportUrl(applied.month, applied.search, applied.customerId)} download>Download Excel</a>
+              <a className="btn" id="xlsx-link" href={exportUrl(applied.month, applied.search, applied.customerId)} download onClick={(e) => { if (!customer) { e.preventDefault(); setMsg({ kind: "err", text: "Pick one customer in the filter, press Search, then Download Excel. The invoice number is made for one customer." }); } }}>Download Excel</a>
               <button id="print-btn" disabled={busy} onClick={printBill}>Print</button>
               <button className="danger" id="delete-all" disabled={busy} onClick={() => { setConfirmAll(true); setEditId(null); setDelId(null); }}>Delete all</button>
             </div>
