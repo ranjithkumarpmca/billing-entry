@@ -66,22 +66,24 @@ export function Backdrop({ dim }) {
   );
 }
 
+const LOGOS = ["/franch_express.png", "/logo.png"]; // tries each in order, then falls back to the text wordmark
+
 export default function Hero({ children }) {
-  const [logoOk, setLogoOk] = useState(true);
+  const [logoIdx, setLogoIdx] = useState(0);
   const today = new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 
   return (
     <header className="hero noprint">
       <div className="brand">
-        {logoOk ? (
-          <img className="brand-logo" src="/logo.png" alt="Franch Express Courier" onError={() => setLogoOk(false)} />
+        {logoIdx < LOGOS.length ? (
+          <img className="brand-logo" src={LOGOS[logoIdx]} alt="Franch Express Courier" onError={() => setLogoIdx((i) => i + 1)} />
         ) : (
           <div className="wordmark"><span>FRANCH EXPRESS</span><em>COURIER</em></div>
         )}
-        <p className="eyebrow-light">Erode · Since 1987</p>
-      </div>
-      <div className="hero-title">
-        <h1>Billing Entry</h1>
+        <div className="hero-title">
+          <h1>Billing Entry</h1>
+          <p className="eyebrow-light">Erode · Since 1987</p>
+        </div>
       </div>
       {children}
       <span className="date-chip">{today}</span>

@@ -141,11 +141,13 @@ h1 { font-family: var(--font-display); font-size: 1.7rem; line-height: 1.1; marg
 
 /* ---------- header: sits straight on the backdrop, no box ---------- */
 .hero { display: flex; align-items: center; justify-content: space-between; gap: 8px 20px; flex-wrap: wrap; color: #fff; padding: 2px 2px 0; }
-.brand-logo { display: block; height: 38px; max-width: 220px; object-fit: contain; }
+.brand { display: flex; align-items: center; gap: 14px; flex: 1 1 auto; min-width: 0; }
+.brand-logo { display: block; flex: none; height: 56px; width: auto; max-width: 220px; object-fit: contain; }
 .wordmark { display: flex; align-items: baseline; gap: 10px; font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; letter-spacing: 0.14em; }
 .wordmark em { font-style: normal; font-weight: 600; font-size: 0.72rem; letter-spacing: 0.32em; color: var(--accent); }
-.eyebrow-light { margin: 4px 0 0; font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255, 255, 255, 0.85); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5); }
-.hero-title { flex: 1 1 auto; text-align: left; }
+.eyebrow-light { margin: 2px 0 0; font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255, 255, 255, 0.85); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5); }
+.hero-title { text-align: left; min-width: 0; }
+.hero h1 { line-height: 1.1; }
 .hero h1 { font-size: clamp(1.5rem, 4.5vw, 2.1rem); color: #fff; text-shadow: 0 2px 18px rgba(0, 0, 0, 0.4); }
 .hero h1 small { font-family: var(--font-body); font-size: 0.5em; font-weight: 500; color: rgba(255, 255, 255, 0.7); margin-left: 8px; }
 .date-chip { font-size: 0.8rem; padding: 5px 12px; border-radius: 999px; background: rgba(0, 20, 50, 0.3); border: 1px solid rgba(255, 255, 255, 0.22); white-space: nowrap; backdrop-filter: blur(6px); }
@@ -279,7 +281,7 @@ textarea { min-height: 110px; font-family: var(--font-mono); font-size: 0.8rem; 
 .print-title { display: none; }
 
 @media (max-width: 560px) {
-  .hero-title { order: 3; flex-basis: 100%; }
+  .brand { flex-basis: 100%; }
   .panel { padding: 14px; }
 }
 
