@@ -10,10 +10,10 @@
     <relativePath/>
   </parent>
 
-  <groupId>com.podregister</groupId>
-  <artifactId>pod-register</artifactId>
+  <groupId>com.billingentry</groupId>
+  <artifactId>billing-entry</artifactId>
   <version>1.0.0</version>
-  <name>pod-register</name>
+  <name>billing-entry</name>
 
   <properties>
     <java.version>17</java.version>

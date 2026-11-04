@@ -34,6 +34,14 @@ export default function EntryPage({ customers = [], onSaved, onOpenRecords, onOp
 
   useEffect(() => { onHasRows?.(rows.length > 0); }, [rows.length]);
 
+  // Unsaved rows: ask the browser to confirm before the tab / window is closed or the page is reloaded.
+  useEffect(() => {
+    if (rows.length === 0) return undefined;
+    const warn = (e) => { e.preventDefault(); e.returnValue = ""; return ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [rows.length]);
+
   // One customer only: pick it for you. A deleted customer is dropped from the box.
   useEffect(() => {
     if (customerId && !customers.some((c) => String(c.id) === customerId)) setCustomerId("");

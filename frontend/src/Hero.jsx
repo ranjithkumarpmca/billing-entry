@@ -93,7 +93,7 @@ export default function Hero({ children }) {
 export function Foot() {
   return (
     <footer className="foot noprint">
-      <p>© {new Date().getFullYear()} Franch Express Courier Pvt. Ltd. · Erode</p>
+      <p>© {new Date().getFullYear()} Franch Express Courier Pvt. Ltd. · Erode <span className="powered">· Powered by <b>RK</b></span></p>
     </footer>
   );
 }

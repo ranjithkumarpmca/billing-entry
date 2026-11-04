@@ -273,6 +273,7 @@ textarea { min-height: 110px; font-family: var(--font-mono); font-size: 0.8rem; 
 }
 
 .foot { flex: none; text-align: center; height: 20px; line-height: 20px; margin-top: -2px; color: rgba(255, 255, 255, 0.6); font-size: 0.72rem; letter-spacing: 0.05em; }
+.foot .powered b { color: #ffc12e; font-weight: 700; letter-spacing: 0.08em; }
 .foot p { margin: 0; text-shadow: 0 0 4px rgba(0, 0, 0, 0.7), 0 1px 6px #000; }
 
 .print-title { display: none; }
