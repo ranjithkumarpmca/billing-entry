@@ -56,6 +56,15 @@ public class CustomerService {
         repo.deleteById(id);
     }
 
+    /** A missing value keeps the current one. Rates are whole rupees. */
+    private static int rate(Integer given, int current, String label, int min) {
+        int v = given == null ? current : given;
+        if (v < min || v > 100_000) {
+            throw new IllegalArgumentException(label + (min == 0 ? " cannot be negative." : " must be more than 0."));
+        }
+        return v;
+    }
+
     /** Checks everything first, and only then changes the customer. */
     private void fill(Customer c, CustomerRequest r, Long selfId) {
         String name = r.name() == null ? "" : r.name().trim();
@@ -74,8 +83,16 @@ public class CustomerService {
         if (taken) {
             throw new IllegalArgumentException("A customer named \"" + name + "\" already exists.");
         }
+        int cover = rate(r.coverRate(), c.getCoverRate(), "Cover rate", 1);
+        int parcel = rate(r.parcelRate(), c.getParcelRate(), "Parcel rate", 1);
+        int extra = rate(r.parcelExtra(), c.getParcelExtra(), "Parcel extra rate", 0);
+        int slab = rate(r.slabGrams(), c.getSlabGrams(), "Slab grams", 1);
         c.setName(name);
         c.setPlace(place);
         c.setGstin(gstin);
+        c.setCoverRate(cover);
+        c.setParcelRate(parcel);
+        c.setParcelExtra(extra);
+        c.setSlabGrams(slab);
     }
 }

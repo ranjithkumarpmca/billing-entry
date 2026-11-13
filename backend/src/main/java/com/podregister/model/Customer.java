@@ -24,7 +24,27 @@ public class Customer {
     @Column(name = "gstin", nullable = false, length = 20)
     private String gstin = "";
 
+    @Column(name = "cover_rate", nullable = false)
+    private int coverRate = 25;
+
+    @Column(name = "parcel_rate", nullable = false)
+    private int parcelRate = 25;
+
+    @Column(name = "parcel_extra", nullable = false)
+    private int parcelExtra = 7;
+
+    @Column(name = "slab_grams", nullable = false)
+    private int slabGrams = 300;
+
     public Long getId() { return id; }
+    public int getCoverRate() { return coverRate; }
+    public void setCoverRate(int coverRate) { this.coverRate = coverRate; }
+    public int getParcelRate() { return parcelRate; }
+    public void setParcelRate(int parcelRate) { this.parcelRate = parcelRate; }
+    public int getParcelExtra() { return parcelExtra; }
+    public void setParcelExtra(int parcelExtra) { this.parcelExtra = parcelExtra; }
+    public int getSlabGrams() { return slabGrams; }
+    public void setSlabGrams(int slabGrams) { this.slabGrams = slabGrams; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getPlace() { return place; }

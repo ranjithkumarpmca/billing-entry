@@ -48,8 +48,13 @@ public class EntryService {
                 .orElseThrow(() -> new NoSuchElementException("That customer no longer exists. Refresh the page."));
     }
 
+    /** Rates for entries saved before customers existed (the old rate card). */
+    private static Customer defaultRates() {
+        return new Customer();
+    }
+
     /** Checks one request and copies it into the entry. The amount is always calculated here, never taken from the browser. */
-    private void fill(PodEntry e, EntryRequest r, String where) {
+    private void fill(PodEntry e, EntryRequest r, String where, Customer customer) {
         String pod = r.podNumber() == null ? "" : r.podNumber().trim();
         if (!POD.matcher(pod).matches()) {
             throw new IllegalArgumentException(where + "POD number must be 11 digits and end with 0 to 6.");
@@ -61,14 +66,14 @@ public class EntryService {
         if (destination.isEmpty() || destination.length() > 100) {
             throw new IllegalArgumentException(where + "destination is missing.");
         }
-        if (r.weightGrams() == null || r.weightGrams() <= 0 || r.weightGrams() > 1_000_000) {
-            throw new IllegalArgumentException(where + "weight must be more than 0 grams.");
+        if (r.weightGrams() == null || r.weightGrams() < 0 || r.weightGrams() > 1_000_000) {
+            throw new IllegalArgumentException(where + "weight cannot be negative.");
         }
         e.setPodNumber(pod);
         e.setEntryDate(r.entryDate());
         e.setDestination(destination);
         e.setWeightGrams(r.weightGrams());
-        e.setAmount(AmountCalculator.amountFor(destination, r.weightGrams()));
+        e.setAmount(AmountCalculator.amountFor(customer, destination, r.weightGrams()));
     }
 
     /** Saves all rows or none. */
@@ -84,22 +89,22 @@ public class EntryService {
         Set<String> seen = new LinkedHashSet<>();
         List<String> repeated = new ArrayList<>();
         List<PodEntry> toSave = new ArrayList<>();
-        Set<Long> knownCustomers = new HashSet<>();
+        Map<Long, Customer> known = new java.util.HashMap<>();
         int row = 0;
 
         for (EntryRequest r : requests) {
             row++;
             PodEntry e = new PodEntry();
-            fill(e, r, "Row " + row + ": ");
             if (r.customerId() == null) {
                 throw new IllegalArgumentException("Row " + row + ": choose a customer.");
             }
-            if (!knownCustomers.contains(r.customerId())) {
-                if (!customers.existsById(r.customerId())) {
-                    throw new IllegalArgumentException("That customer no longer exists. Refresh the page.");
-                }
-                knownCustomers.add(r.customerId());
+            Customer customer = known.get(r.customerId());
+            if (customer == null) {
+                customer = customers.findById(r.customerId())
+                        .orElseThrow(() -> new IllegalArgumentException("That customer no longer exists. Refresh the page."));
+                known.put(r.customerId(), customer);
             }
+            fill(e, r, "Row " + row + ": ", customer);
             e.setCustomerId(r.customerId());
             if (!seen.add(e.getPodNumber())) {
                 repeated.add(e.getPodNumber());
@@ -127,13 +132,21 @@ public class EntryService {
                 .orElseThrow(() -> new NoSuchElementException("This entry no longer exists. Refresh the list."));
 
         // Validate into a temporary object first, so nothing is flushed to the database if a check fails.
+        Long customerId = request.customerId() != null ? request.customerId() : existing.getCustomerId();
+        Customer customer = customerId == null ? defaultRates()
+                : customers.findById(customerId)
+                        .orElseThrow(() -> new IllegalArgumentException("That customer no longer exists. Refresh the page."));
         PodEntry checked = new PodEntry();
-        fill(checked, request, "");
+        fill(checked, request, "", customer);
         if (repo.existsByPodNumberAndIdNot(checked.getPodNumber(), id)) {
             throw new DuplicatePodException(List.of(checked.getPodNumber()));
         }
-        if (request.customerId() != null && !customers.existsById(request.customerId())) {
-            throw new IllegalArgumentException("That customer no longer exists. Refresh the page.");
+        // Only the POD number or date changed: keep the amount already billed, even if the customer's rates changed since.
+        boolean sameBilling = existing.getWeightGrams() == checked.getWeightGrams()
+                && existing.getDestination().equalsIgnoreCase(checked.getDestination())
+                && java.util.Objects.equals(existing.getCustomerId(), customerId);
+        if (sameBilling) {
+            checked.setAmount(existing.getAmount());
         }
 
         existing.setPodNumber(checked.getPodNumber());

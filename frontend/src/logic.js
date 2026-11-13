@@ -1,6 +1,12 @@
 import { TOWNS } from "./towns.js";
 
-export const BASE = 25, STEP = 7, SLAB = 300, MAXGEN = 2000;
+export const MAXGEN = 2000;
+// From this weight up a consignment is a parcel, lighter ones are covers. Keep in step with AmountCalculator.java.
+export const PARCEL_FROM = 250;
+// Weight filled in when a town is picked on an empty row (a typical cover). Change it on the row if needed.
+export const DEFAULT_WEIGHT = 100;
+// Rates for entries without a customer: the old rate card.
+export const DEFAULT_RATES = { coverRate: 25, parcelRate: 25, parcelExtra: 7, slabGrams: 300 };
 // Towns with one flat amount, whatever the weight.
 export const FLAT_RATES = { Bombay: 150 };
 
@@ -36,12 +42,18 @@ export function seriesInfo(first, last) {
 
 export const findTown = (s) => TOWNMAP[(s || "").trim().toLowerCase()] || null;
 
-export function amountFor(dest, weight) {
-  const w = Number(weight);
-  if (!findTown(dest) || !(w > 0)) return null;
+export const isParcel = (weight) => Number(weight) >= PARCEL_FROM;
+
+// Cover: the customer's cover rate. Parcel: parcel rate for the first slab + extra rate for each further slab.
+export function amountFor(dest, weight, customer) {
+  const w = Number(weight) || 0; // 0 (or empty) is a cover: the cover price shows as soon as the town is picked
   const town = findTown(dest);
+  if (!town) return null;
   if (FLAT_RATES[town] != null) return FLAT_RATES[town];
-  return BASE + (Math.ceil(w / SLAB) - 1) * STEP;
+  const r = customer || DEFAULT_RATES;
+  if (!isParcel(w)) return r.coverRate;
+  const slab = Math.max(1, r.slabGrams);
+  return r.parcelRate + (Math.ceil(w / slab) - 1) * r.parcelExtra;
 }
 
 export const fmtRs = (n) => "₹" + n.toLocaleString("en-IN");

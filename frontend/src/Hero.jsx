@@ -66,27 +66,37 @@ export function Backdrop({ dim }) {
   );
 }
 
-const LOGOS = ["/franch_express.png", "/logo.png"]; // tries each in order, then falls back to the text wordmark
-
 export default function Hero({ children }) {
-  const [logoIdx, setLogoIdx] = useState(0);
+  const [logoOk, setLogoOk] = useState(true);
   const today = new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 
   return (
     <header className="hero noprint">
-      <div className="brand">
-        {logoIdx < LOGOS.length ? (
-          <img className="brand-logo" src={LOGOS[logoIdx]} alt="Franch Express Courier" onError={() => setLogoIdx((i) => i + 1)} />
-        ) : (
-          <div className="wordmark"><span>FRANCH EXPRESS</span><em>COURIER</em></div>
-        )}
-        <div className="hero-title">
-          <h1>Billing Entry</h1>
-          <p className="eyebrow-light">Erode · Since 1987</p>
+      <div className="hero-banner">
+        <div className="brand">
+          <div className="logo-tile">
+            {logoOk ? (
+              <img className="brand-logo" src="/logo.png" alt="Franch Express Courier logo" onError={() => setLogoOk(false)} />
+            ) : (
+              <svg className="parcel-mark" viewBox="0 0 56 56" fill="none" stroke="#0a1d36" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" aria-hidden="true">
+                <path d="M28 6 L48 16 V38 L28 48 L8 38 V16 Z" />
+                <path d="M8 16 L28 26 L48 16" />
+                <path d="M28 26 V48" />
+                <path d="M18 11 L38 21" stroke="#f2a900" />
+              </svg>
+            )}
+          </div>
+          <div className="brand-text">
+            <h1 className="brand-name">FRANCH EXPRESS COURIER</h1>
+            <p className="eyebrow-light">Erode · Serving Tamil Nadu since 1987</p>
+          </div>
+        </div>
+        <div className="hero-side">
+          <span className="hero-section">Billing Entry</span>
+          <span className="date-chip">{today}</span>
         </div>
       </div>
       {children}
-      <span className="date-chip">{today}</span>
     </header>
   );
 }

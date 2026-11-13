@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import DestCell from "./DestCell.jsx";
 import { flushSync } from "react-dom";
 import { deleteEntry, deleteMatching, exportUrl, fetchEntries, getInvoiceNo, updateEntry } from "./api.js";
@@ -83,7 +83,7 @@ export default function RecordsPage({ active, refreshKey, customers = [] }) {
   }, [customer, invoiceNo, applied.month, rows]);
   const printBill = async () => {
     if (!customer) {
-      setMsg({ kind: "err", text: "Pick one customer in the filter, press Search, then Print. A bill is made for one customer." });
+      setMsg({ kind: "err", text: "Pick one customer in the filter,then Print. A bill is made for one customer." });
       return;
     }
     setMsg(null); setBusy(true);
@@ -100,6 +100,16 @@ export default function RecordsPage({ active, refreshKey, customers = [] }) {
   };
 
   const resetEditing = () => { setEditId(null); setDraft(null); setDelId(null); setConfirmAll(false); };
+
+  // Filters apply by themselves: a month, year or customer change at once, typing in the POD / town box after a short pause.
+  const filterKey = useRef(null);
+  useEffect(() => {
+    const key = `${mon}|${year}|${custId}|${search}`;
+    if (filterKey.current === null) { filterKey.current = key; return; } // first open: already loaded above
+    if (filterKey.current === key) return;
+    const t = setTimeout(() => { filterKey.current = key; runSearch(); }, 250);
+    return () => clearTimeout(t);
+  }, [mon, year, custId, search]);
 
   const runSearch = () => {
     const who = customers.find((c) => String(c.id) === custId)?.name;
@@ -135,7 +145,7 @@ export default function RecordsPage({ active, refreshKey, customers = [] }) {
     const podErr = parsePod(draft.pod).err;
     const town = findTown(draft.dest);
     const problem = podErr || (!draft.date && "Date is missing.") || (!town && "Pick a destination from the list.") ||
-      (!(Number(draft.weight) > 0) && "Enter the weight in grams.");
+      ((draft.weight === "" || !(Number(draft.weight) >= 0)) && "Enter the weight in grams (0 for a cover).");
     if (problem) { setMsg({ kind: "err", text: problem }); return; }
     setBusy(true); setMsg(null);
     try {
@@ -204,10 +214,9 @@ export default function RecordsPage({ active, refreshKey, customers = [] }) {
             </select>
           </div>
           <div className="field">
-            <label htmlFor="q">POD number or town (optional)</label>
+            <label htmlFor="q">POD number or town</label>
             <input id="q" type="text" value={search} placeholder="e.g. Madurai" autoComplete="off" onChange={(e) => setSearch(e.target.value)} />
           </div>
-          <div className="field"><button className="primary" id="search-btn" type="submit">Search</button></div>
         </form>
       </section>
 
@@ -220,7 +229,7 @@ export default function RecordsPage({ active, refreshKey, customers = [] }) {
           </div>
           {rows.length > 0 && (
             <div className="grp">
-              <a className="btn" id="xlsx-link" href={exportUrl(applied.month, applied.search, applied.customerId)} download onClick={(e) => { if (!customer) { e.preventDefault(); setMsg({ kind: "err", text: "Pick one customer in the filter, press Search, then Download Excel. The invoice number is made for one customer." }); } }}>Download Excel</a>
+              <a className="btn" id="xlsx-link" href={exportUrl(applied.month, applied.search, applied.customerId)} download onClick={(e) => { if (!customer) { e.preventDefault(); setMsg({ kind: "err", text: "Pick one customer in the filter,then Download Excel. The invoice number is made for one customer." }); } }}>Download Excel</a>
               <button id="print-btn" disabled={busy} onClick={printBill}>Print</button>
               <button className="danger" id="delete-all" disabled={busy} onClick={() => { setConfirmAll(true); setEditId(null); setDelId(null); }}>Delete all</button>
             </div>
@@ -251,7 +260,9 @@ export default function RecordsPage({ active, refreshKey, customers = [] }) {
               <tbody>
                 {rows.map((r, i) => {
                   if (editId === r.id && draft) {
-                    const a = amountFor(draft.dest, draft.weight);
+                    // Same weight and town as when it was saved: the saved amount stays, even if the customer's rates changed since.
+                    const unchanged = r.destination === findTown(draft.dest) && String(r.weightGrams) === String(Number(draft.weight));
+                    const a = unchanged ? r.amount : amountFor(draft.dest, draft.weight, customers.find((c) => c.id === draft.customerId));
                     return (
                       <tr key={r.id} className={"editing" + (i >= from && i < from + PAGE_SIZE ? "" : " pg-hide")}>
                         <td className="sno ro">{i + 1}</td>
