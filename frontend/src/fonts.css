@@ -1,0 +1,71 @@
+/* bricolage-grotesque-latin-600-normal */
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url(/fonts/bricolage-grotesque-latin-600-normal.woff2) format('woff2');
+}/* bricolage-grotesque-latin-700-normal */
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url(/fonts/bricolage-grotesque-latin-700-normal.woff2) format('woff2');
+}/* hind-madurai-latin-400-normal */
+@font-face {
+  font-family: 'Hind Madurai';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(/fonts/hind-madurai-latin-400-normal.woff2) format('woff2');
+}/* hind-madurai-latin-500-normal */
+@font-face {
+  font-family: 'Hind Madurai';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url(/fonts/hind-madurai-latin-500-normal.woff2) format('woff2');
+}/* hind-madurai-latin-600-normal */
+@font-face {
+  font-family: 'Hind Madurai';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url(/fonts/hind-madurai-latin-600-normal.woff2) format('woff2');
+}/* hind-madurai-tamil-400-normal */
+@font-face {
+  font-family: 'Hind Madurai';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(/fonts/hind-madurai-tamil-400-normal.woff2) format('woff2');
+}/* hind-madurai-tamil-500-normal */
+@font-face {
+  font-family: 'Hind Madurai';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url(/fonts/hind-madurai-tamil-500-normal.woff2) format('woff2');
+}/* hind-madurai-tamil-600-normal */
+@font-face {
+  font-family: 'Hind Madurai';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url(/fonts/hind-madurai-tamil-600-normal.woff2) format('woff2');
+}/* ibm-plex-mono-latin-400-normal */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(/fonts/ibm-plex-mono-latin-400-normal.woff2) format('woff2');
+}/* ibm-plex-mono-latin-500-normal */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url(/fonts/ibm-plex-mono-latin-500-normal.woff2) format('woff2');
+}

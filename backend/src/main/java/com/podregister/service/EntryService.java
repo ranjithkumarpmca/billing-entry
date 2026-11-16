@@ -168,26 +168,23 @@ public class EntryService {
         repo.deleteById(id);
     }
 
-    /** Deletes every entry that the same month and search filter would list. Returns how many were deleted. */
+    /** Deletes every entry that the same filter would list. Returns how many were deleted. */
     @Transactional
-    public int deleteMatching(String month, String search, Long customerId) {
-        List<PodEntry> list = find(month, search, customerId);
+    public int deleteMatching(LocalDate from, LocalDate to, String search, Long customerId) {
+        List<PodEntry> list = find(from, to, search, customerId);
         repo.deleteAll(list);
         return list.size();
     }
 
-    /** month is "yyyy-MM"; blank or "all" returns every month. search matches POD number or destination. */
+    /** from and to are days, both included; a blank one means no limit on that side. search matches POD number or destination. */
     @Transactional(readOnly = true)
-    public List<PodEntry> find(String month, String search, Long customerId) {
-        List<PodEntry> list;
-        if (month == null || month.isBlank() || month.equalsIgnoreCase("all")) {
-            list = repo.findAllOrdered();
-        } else {
-            YearMonth ym = YearMonth.parse(month.trim());
-            LocalDate from = ym.atDay(1);
-            LocalDate to = ym.atEndOfMonth();
-            list = repo.findBetween(from, to);
+    public List<PodEntry> find(LocalDate from, LocalDate to, String search, Long customerId) {
+        LocalDate a = from == null ? LocalDate.of(1900, 1, 1) : from;
+        LocalDate b = to == null ? LocalDate.of(2999, 12, 31) : to;
+        if (a.isAfter(b)) {
+            throw new IllegalArgumentException("The From date is after the To date.");
         }
+        List<PodEntry> list = repo.findBetween(a, b);
         if (customerId != null) {
             list = list.stream().filter(e -> customerId.equals(e.getCustomerId())).toList();
         }

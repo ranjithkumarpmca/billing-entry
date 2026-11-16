@@ -6,17 +6,24 @@ CREATE TABLE IF NOT EXISTS customer (
     created_at  TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
+-- Address lines and city, printed under the customer name on the bill.
+ALTER TABLE customer ADD COLUMN IF NOT EXISTS address1 VARCHAR(150) NOT NULL DEFAULT '';
+ALTER TABLE customer ADD COLUMN IF NOT EXISTS address2 VARCHAR(150) NOT NULL DEFAULT '';
+ALTER TABLE customer ADD COLUMN IF NOT EXISTS city     VARCHAR(150) NOT NULL DEFAULT '';
+
 CREATE UNIQUE INDEX IF NOT EXISTS uq_customer_name ON customer (lower(name));
 
--- Per-customer rates (rupees). Existing customers get the old rate card: Rs 25, then +Rs 7 for every further 300 g.
---   cover_rate   : flat rate for a cover (weight below the parcel limit)
---   parcel_rate  : price of the first slab of a parcel
---   parcel_extra : price for each further slab (or part of it)
---   slab_grams   : slab size in grams
-ALTER TABLE customer ADD COLUMN IF NOT EXISTS cover_rate   INTEGER NOT NULL DEFAULT 25;
-ALTER TABLE customer ADD COLUMN IF NOT EXISTS parcel_rate  INTEGER NOT NULL DEFAULT 25;
-ALTER TABLE customer ADD COLUMN IF NOT EXISTS parcel_extra INTEGER NOT NULL DEFAULT 7;
-ALTER TABLE customer ADD COLUMN IF NOT EXISTS slab_grams   INTEGER NOT NULL DEFAULT 300;
+-- Per-customer rates (rupees), typed by the owner for each customer:
+--   cover_rate : cover (under 250 g)
+--   rate_250   : parcel up to 250 g
+--   rate_500   : parcel 251 g to 500 g
+--   rate_1000  : parcel 501 g to 1000 g
+-- Above 1 kg: rate_1000 + rate_250 for every extra 250 g (or part of it).
+-- The old parcel_rate / parcel_extra / slab_grams columns are no longer used.
+ALTER TABLE customer ADD COLUMN IF NOT EXISTS cover_rate INTEGER NOT NULL DEFAULT 25;
+ALTER TABLE customer ADD COLUMN IF NOT EXISTS rate_250   INTEGER NOT NULL DEFAULT 25;
+ALTER TABLE customer ADD COLUMN IF NOT EXISTS rate_500   INTEGER NOT NULL DEFAULT 32;
+ALTER TABLE customer ADD COLUMN IF NOT EXISTS rate_1000  INTEGER NOT NULL DEFAULT 46;
 
 CREATE TABLE IF NOT EXISTS pod_entry (
     id            BIGSERIAL PRIMARY KEY,
@@ -44,10 +51,20 @@ CREATE TABLE IF NOT EXISTS invoice (
     id           BIGSERIAL PRIMARY KEY,
     invoice_no   BIGINT       NOT NULL UNIQUE,
     customer_id  BIGINT       NOT NULL REFERENCES customer (id) ON DELETE CASCADE,
-    period       VARCHAR(7)   NOT NULL,
+    period       VARCHAR(40)  NOT NULL,
     created_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
     UNIQUE (customer_id, period)
 );
 
+-- A bill period is now a date range ("2026-09-01..2026-11-30"), so the key is longer than yyyy-MM.
+ALTER TABLE invoice ALTER COLUMN period TYPE VARCHAR(40);
+
 CREATE INDEX IF NOT EXISTS idx_pod_entry_date ON pod_entry (entry_date);
 CREATE INDEX IF NOT EXISTS idx_pod_entry_customer ON pod_entry (customer_id);
+
+-- Login PINs are stored hashed, never as plain text. Roles: ADMIN, BILLER, RECOVERY (hash of the recovery key).
+CREATE TABLE IF NOT EXISTS app_auth (
+    role         VARCHAR(10)   PRIMARY KEY,
+    secret_hash  VARCHAR(300)  NOT NULL,
+    created_at   TIMESTAMPTZ   NOT NULL DEFAULT now()
+);

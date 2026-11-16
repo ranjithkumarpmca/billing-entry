@@ -11,10 +11,17 @@ com\podregister\web\EntryRequest.class
 com\podregister\web\ApiExceptionHandler.class
 com\podregister\service\DuplicatePodException.class
 com\podregister\service\EntryService.class
+com\podregister\model\CustomerSlab.class
+com\podregister\web\AuthFilter.class
+com\podregister\service\AuthService$Result.class
 com\podregister\service\AmountCalculator.class
+com\podregister\web\AuthController$PinBody.class
 com\podregister\repo\PodEntryRepository.class
 com\podregister\web\CustomerController.class
+com\podregister\service\AuthService.class
 com\podregister\web\InvoiceController.class
 com\podregister\web\CustomerResponse.class
+com\podregister\web\AuthController.class
+com\podregister\service\AuthService$Session.class
 com\podregister\web\BulkRequest.class
 com\podregister\model\PodEntry.class

@@ -2,7 +2,7 @@ package com.podregister.service;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import java.time.YearMonth;
+import java.time.LocalDate;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,20 +18,20 @@ public class InvoiceService {
     @PersistenceContext
     private EntityManager em;
 
-    /** period is "yyyy-MM", or blank / "all" for every month. */
-    public static String periodKey(String month) {
-        return (month == null || month.isBlank() || month.equalsIgnoreCase("all")) ? "all" : month.trim();
+    /** The period is the date range, for example "2026-09-01..2026-11-30". No dates at all gives "all". */
+    public static String periodKey(LocalDate from, LocalDate to) {
+        if (from == null && to == null) {
+            return "all";
+        }
+        return (from == null ? "start" : from.toString()) + ".." + (to == null ? "end" : to.toString());
     }
 
     @Transactional
-    public long numberFor(Long customerId, String month) {
+    public long numberFor(Long customerId, LocalDate from, LocalDate to) {
         if (customerId == null) {
             throw new IllegalArgumentException("Pick one customer to get an invoice number.");
         }
-        String period = periodKey(month);
-        if (!period.equals("all")) {
-            YearMonth.parse(period); // rejects anything that is not yyyy-MM
-        }
+        String period = periodKey(from, to);
 
         Long existing = find(customerId, period);
         if (existing != null) {

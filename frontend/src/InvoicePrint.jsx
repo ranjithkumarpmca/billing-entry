@@ -13,15 +13,24 @@ export default function InvoicePrint({ rows, inv }) {
 
   return (
     <div className="invoice print-only">
-      <table className="inv">
+      <table className="inv head">
         {cols}
         <tbody>
-          <tr><td colSpan={6} className="inv-name">{SELLER.name}</td></tr>
+          <tr><td colSpan={6} className="inv-name">{SELLER.courier}</td></tr>
+          <tr>
+            <td colSpan={6}>
+              <div style={{ display: "flex", justifyContent: "center", gap: "4px" }}>
+                <span>{SELLER.franchisee}.</span>
+                <span>{SELLER.agency}</span>
+              </div>
+            </td>
+          </tr>
           <tr><td colSpan={6}>{SELLER.address}</td></tr>
           <tr><td colSpan={6}>GSTIN:{SELLER.gstin}</td></tr>
           <tr><td colSpan={3}>CUSTOMER NAME : {inv.customer}</td><td colSpan={3}>INVOICE NO:{inv.invoiceNo}</td></tr>
-          <tr><td colSpan={3}>{inv.place}</td><td colSpan={3}>PERIOD FROM:{dotDate(inv.from)} to {dotDate(inv.to)}</td></tr>
-          <tr><td colSpan={3}>{inv.gstin ? `GSTIN:${inv.gstin}` : ""}</td><td colSpan={3}>Billing date: {dotDate(inv.billDate)}</td></tr>
+          <tr><td colSpan={3}>{inv.address1}</td><td colSpan={3}>PERIOD FROM:{dotDate(inv.from)} to {dotDate(inv.to)}</td></tr>
+          <tr><td colSpan={3}>{inv.address2}</td><td colSpan={3}>Billing date: {dotDate(inv.billDate)}</td></tr>
+          <tr><td colSpan={3}>{(() => { const pin = String(inv.city || "").replace(/\D/g, ""); return pin ? `${SELLER.town}-${pin}` : SELLER.town; })()}</td><td colSpan={3}>{inv.gstin ? `GSTIN:${inv.gstin}` : ""}</td></tr>
         </tbody>
       </table>
 

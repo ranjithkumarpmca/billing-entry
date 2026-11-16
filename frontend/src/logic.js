@@ -6,7 +6,7 @@ export const PARCEL_FROM = 250;
 // Weight filled in when a town is picked on an empty row (a typical cover). Change it on the row if needed.
 export const DEFAULT_WEIGHT = 100;
 // Rates for entries without a customer: the old rate card.
-export const DEFAULT_RATES = { coverRate: 25, parcelRate: 25, parcelExtra: 7, slabGrams: 300 };
+export const DEFAULT_RATES = { coverRate: 25, rate250: 25, rate500: 32, rate1000: 46 };
 // Towns with one flat amount, whatever the weight.
 export const FLAT_RATES = { Bombay: 150 };
 
@@ -44,7 +44,7 @@ export const findTown = (s) => TOWNMAP[(s || "").trim().toLowerCase()] || null;
 
 export const isParcel = (weight) => Number(weight) >= PARCEL_FROM;
 
-// Cover: the customer's cover rate. Parcel: parcel rate for the first slab + extra rate for each further slab.
+// Cover: the customer's cover rate. Parcel: 250 / 500 / 1000 g rate; above 1 kg, 1 kg rate + 250 g rate per extra 250 g.
 export function amountFor(dest, weight, customer) {
   const w = Number(weight) || 0; // 0 (or empty) is a cover: the cover price shows as soon as the town is picked
   const town = findTown(dest);
@@ -52,8 +52,10 @@ export function amountFor(dest, weight, customer) {
   if (FLAT_RATES[town] != null) return FLAT_RATES[town];
   const r = customer || DEFAULT_RATES;
   if (!isParcel(w)) return r.coverRate;
-  const slab = Math.max(1, r.slabGrams);
-  return r.parcelRate + (Math.ceil(w / slab) - 1) * r.parcelExtra;
+  if (w <= 250) return r.rate250;
+  if (w <= 500) return r.rate500;
+  if (w <= 1000) return r.rate1000;
+  return r.rate1000 + Math.ceil((w - 1000) / 250) * r.rate250;
 }
 
 export const fmtRs = (n) => "₹" + n.toLocaleString("en-IN");

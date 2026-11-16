@@ -5,22 +5,29 @@ import { deleteEntry, deleteMatching, exportUrl, fetchEntries, getInvoiceNo, upd
 import InvoicePrint from "./InvoicePrint.jsx";
 import { PencilIcon, TrashIcon } from "./icons.jsx";
 import { periodOf } from "./invoice.js";
-import { amountFor, blockNonDigit, digits, findTown, fmtDate, fmtRs, parsePod } from "./logic.js";
+import { amountFor, blockNonDigit, digits, findTown, fmtDate, fmtRs, parsePod, todayStr } from "./logic.js";
 
 const PAGE_SIZE = 10;
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const pad = (n) => String(n).padStart(2, "0");
+const isoOf = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+// The period shown on the page: a From and To date. Blank side = no limit.
+const periodLabel = (from, to) => `${from ? fmtDate(from) : "start"} to ${to ? fmtDate(to) : "today"}`;
 
 export default function RecordsPage({ active, refreshKey, customers = [] }) {
   const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [mon, setMon] = useState(String(now.getMonth() + 1).padStart(2, "0")); // "01".."12" or "all"
+  // Starts with the last 3 months (the 1st of two months back, up to today). Change the dates on the page as needed.
+  const defFrom = isoOf(new Date(now.getFullYear(), now.getMonth() - 2, 1));
+  const defTo = todayStr();
+  const [from, setFrom] = useState(defFrom);
+  const [to, setTo] = useState(defTo);
   const [search, setSearch] = useState("");
   const [custId, setCustId] = useState(""); // "" = all customers
   const [applied, setApplied] = useState({
     customerId: "",
-    month: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`,
+    from: defFrom,
+    to: defTo,
     search: "",
-    label: `${MONTHS[now.getMonth()]} ${now.getFullYear()}`,
+    label: periodLabel(defFrom, defTo),
   });
   const [rows, setRows] = useState([]);
   const [page, setPage] = useState(1);
@@ -35,16 +42,10 @@ export default function RecordsPage({ active, refreshKey, customers = [] }) {
   const [msg, setMsg] = useState(null); // { kind: "ok" | "err", text }
   const [invoiceNo, setInvoiceNo] = useState(""); // given by the server when you press Print
 
-  const years = useMemo(() => {
-    const y = now.getFullYear(), out = [];
-    for (let i = y + 1; i >= y - 5; i--) out.push(i);
-    return out;
-  }, []);
-
   const load = async (f, silent) => {
     if (!silent) setState("loading");
     try {
-      setRows(await fetchEntries(f.month, f.search, f.customerId));
+      setRows(await fetchEntries(f.from, f.to, f.search, f.customerId));
       setState("ready");
     } catch (e) {
       setError(e.message); setState("error");
@@ -78,18 +79,21 @@ export default function RecordsPage({ active, refreshKey, customers = [] }) {
   // The bill is made for the customer picked in the filter (after pressing Search).
   const customer = useMemo(() => customers.find((c) => String(c.id) === String(applied.customerId)) || null, [customers, applied.customerId]);
   const inv = useMemo(() => {
-    const p = periodOf(applied.month, rows);
-    return { customer: customer?.name || "", place: customer?.place || "", gstin: customer?.gstin || "", invoiceNo, from: p.from, to: p.to, billDate: p.to };
-  }, [customer, invoiceNo, applied.month, rows]);
+    const p = periodOf(applied.from, applied.to, rows);
+    return {
+      customer: customer?.name || "", address1: customer?.address1 || "", address2: customer?.address2 || "",
+      city: customer?.city || "", gstin: customer?.gstin || "", invoiceNo, from: p.from, to: p.to, billDate: p.to,
+    };
+  }, [customer, invoiceNo, applied.from, applied.to, rows]);
   const printBill = async () => {
     if (!customer) {
-      setMsg({ kind: "err", text: "Pick one customer in the filter,then Print. A bill is made for one customer." });
+      setMsg({ kind: "err", text: "Pick one customer in the filter, press Search, then Print. A bill is made for one customer." });
       return;
     }
     setMsg(null); setBusy(true);
     try {
       // The server gives this customer + month their invoice number (the same one every time).
-      const no = await getInvoiceNo(applied.month, customer.id);
+      const no = await getInvoiceNo(applied.from, applied.to, customer.id);
       flushSync(() => setInvoiceNo(String(no)));
       window.print();
     } catch (e) {
@@ -101,29 +105,30 @@ export default function RecordsPage({ active, refreshKey, customers = [] }) {
 
   const resetEditing = () => { setEditId(null); setDraft(null); setDelId(null); setConfirmAll(false); };
 
-  // Filters apply by themselves: a month, year or customer change at once, typing in the POD / town box after a short pause.
+  // Filters apply by themselves: a date or customer change at once, typing in the POD / town box after a short pause.
   const filterKey = useRef(null);
   useEffect(() => {
-    const key = `${mon}|${year}|${custId}|${search}`;
+    const key = `${from}|${to}|${custId}|${search}`;
     if (filterKey.current === null) { filterKey.current = key; return; } // first open: already loaded above
     if (filterKey.current === key) return;
     const t = setTimeout(() => { filterKey.current = key; runSearch(); }, 250);
     return () => clearTimeout(t);
-  }, [mon, year, custId, search]);
+  }, [from, to, custId, search]);
 
   const runSearch = () => {
+    if (from && to && from > to) {
+      setMsg({ kind: "err", text: "The From date is after the To date. Change the dates." });
+      return;
+    }
     const who = customers.find((c) => String(c.id) === custId)?.name;
-    const base = mon === "all"
-      ? { month: "all", search, label: "All months" }
-      : { month: `${year}-${mon}`, search, label: `${MONTHS[Number(mon) - 1]} ${year}` };
-    const f = { ...base, customerId: custId, label: base.label + (who ? ` · ${who}` : "") };
+    const f = { from, to, search, customerId: custId, label: periodLabel(from, to) + (who ? ` · ${who}` : "") };
     setApplied(f); setMsg(null); resetEditing(); setPage(1);
     load(f);
   };
 
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const cur = Math.min(page, pageCount); // stays valid after deletes
-  const from = (cur - 1) * PAGE_SIZE;
+  const pageStart = (cur - 1) * PAGE_SIZE;
   const pages = useMemo(() => {
     const out = [], want = new Set([1, pageCount, cur - 1, cur, cur + 1]);
     for (let p = 1; p <= pageCount; p++) {
@@ -177,7 +182,7 @@ export default function RecordsPage({ active, refreshKey, customers = [] }) {
   const removeAll = async () => {
     setBusy(true); setMsg(null);
     try {
-      const res = await deleteMatching(applied.month, applied.search, applied.customerId);
+      const res = await deleteMatching(applied.from, applied.to, applied.search, applied.customerId);
       resetEditing();
       setMsg({ kind: "ok", text: `${res.deleted} entries deleted.` });
       await load(applied, true);
@@ -194,17 +199,12 @@ export default function RecordsPage({ active, refreshKey, customers = [] }) {
       <section className="panel noprint" aria-label="Filter">
         <form className="gen filter-row" onSubmit={(e) => { e.preventDefault(); runSearch(); }}>
           <div className="field">
-            <label htmlFor="mon">Month</label>
-            <select id="mon" value={mon} onChange={(e) => setMon(e.target.value)}>
-              <option value="all">All months</option>
-              {MONTHS.map((m, i) => <option key={m} value={String(i + 1).padStart(2, "0")}>{m}</option>)}
-            </select>
+            <label htmlFor="from-d">From</label>
+            <input id="from-d" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
           </div>
           <div className="field">
-            <label htmlFor="year">Year</label>
-            <select id="year" value={year} disabled={mon === "all"} onChange={(e) => setYear(Number(e.target.value))}>
-              {years.map((y) => <option key={y} value={y}>{y}</option>)}
-            </select>
+            <label htmlFor="to-d">To</label>
+            <input id="to-d" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
           </div>
           <div className="field">
             <label htmlFor="cust-f">Customer</label>
@@ -229,7 +229,7 @@ export default function RecordsPage({ active, refreshKey, customers = [] }) {
           </div>
           {rows.length > 0 && (
             <div className="grp">
-              <a className="btn" id="xlsx-link" href={exportUrl(applied.month, applied.search, applied.customerId)} download onClick={(e) => { if (!customer) { e.preventDefault(); setMsg({ kind: "err", text: "Pick one customer in the filter,then Download Excel. The invoice number is made for one customer." }); } }}>Download Excel</a>
+              <a className="btn" id="xlsx-link" href={exportUrl(applied.from, applied.to, applied.search, applied.customerId)} download onClick={(e) => { if (!customer) { e.preventDefault(); setMsg({ kind: "err", text: "Pick one customer in the filter, press Search, then Download Excel. The invoice number is made for one customer." }); } }}>Download Excel</a>
               <button id="print-btn" disabled={busy} onClick={printBill}>Print</button>
               <button className="danger" id="delete-all" disabled={busy} onClick={() => { setConfirmAll(true); setEditId(null); setDelId(null); }}>Delete all</button>
             </div>
@@ -264,7 +264,7 @@ export default function RecordsPage({ active, refreshKey, customers = [] }) {
                     const unchanged = r.destination === findTown(draft.dest) && String(r.weightGrams) === String(Number(draft.weight));
                     const a = unchanged ? r.amount : amountFor(draft.dest, draft.weight, customers.find((c) => c.id === draft.customerId));
                     return (
-                      <tr key={r.id} className={"editing" + (i >= from && i < from + PAGE_SIZE ? "" : " pg-hide")}>
+                      <tr key={r.id} className={"editing" + (i >= pageStart && i < pageStart + PAGE_SIZE ? "" : " pg-hide")}>
                         <td className="sno ro">{i + 1}</td>
                         <td><input id="edit-date" type="date" value={draft.date} onChange={(e) => patchDraft("date", e.target.value)} aria-label="Date" /></td>
                         <td className="ro">{custName(draft.customerId)}</td>
@@ -282,7 +282,7 @@ export default function RecordsPage({ active, refreshKey, customers = [] }) {
                     );
                   }
                   return (
-                    <tr key={r.id} className={i >= from && i < from + PAGE_SIZE ? "" : "pg-hide"}>
+                    <tr key={r.id} className={i >= pageStart && i < pageStart + PAGE_SIZE ? "" : "pg-hide"}>
                       <td className="sno ro">{i + 1}</td>
                       <td className="ro">{fmtDate(r.entryDate)}</td>
                       <td className="ro">{custName(r.customerId)}</td>
@@ -322,7 +322,7 @@ export default function RecordsPage({ active, refreshKey, customers = [] }) {
 
         {state === "ready" && rows.length > PAGE_SIZE && (
           <nav className="pager noprint" aria-label="Pages">
-            <span className="pg-info">Showing {from + 1}–{Math.min(from + PAGE_SIZE, rows.length)} of {rows.length}</span>
+            <span className="pg-info">Showing {pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, rows.length)} of {rows.length}</span>
             <div className="pg-btns">
               <button disabled={cur === 1} onClick={() => { setPage(cur - 1); resetEditing(); }}>‹ Prev</button>
               {pages.map((p, i) => p === "…"

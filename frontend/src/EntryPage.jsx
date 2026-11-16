@@ -89,7 +89,8 @@ export default function EntryPage({ customers = [], onSaved, onOpenRecords, onOp
     return () => clearTimeout(t);
   }, [msg]);
 
-  const info = first.length === 11 && last.length === 11 ? seriesInfo(first, last) : { idle: true };
+  // Ending number is optional: without it the starting number alone is one entry.
+  const info = first.length === 11 && (last.length === 0 || last.length === 11) ? seriesInfo(first, last || first) : { idle: true };
 
   const patch = (id, key, val) => setRows((rs) => rs.map((r) => (r.id === id ? { ...r, [key]: val } : r)));
   const pickDest = (id, town) => {
@@ -104,6 +105,7 @@ export default function EntryPage({ customers = [], onSaved, onOpenRecords, onOp
   // Adds a batch on top of the rows already there, so many dates can be entered before one final Save.
   const generate = () => {
     if (!info.n) return;
+    if (!customerId) { setMsg({ kind: "err", text: "Select the customer first, then add the rows." }); return; }
     if (!date) { setMsg({ kind: "err", text: "Choose the date for these rows first." }); return; }
     if (rows.length + info.n > MAX_SAVE) {
       setMsg({ kind: "err", text: `Only ${MAX_SAVE} entries can be saved at a time. You have ${rows.length}; save these first.` });
@@ -172,10 +174,12 @@ export default function EntryPage({ customers = [], onSaved, onOpenRecords, onOp
 
   const mono = { fontFamily: "var(--font-mono)" };
   let preview;
-  if (info.idle) preview = <p className="note">Type the 11-digit starting and ending POD numbers. Digits only.</p>;
+  if (info.idle) preview = <p className="note">Type the 11-digit starting POD number. Ending number only if there is more than one.</p>;
   else if (info.err) preview = <p className="note err">{info.err}</p>;
   else preview = (
-    <p className="note"><b>{info.n}</b> POD numbers, from <b style={mono}>{first}</b> to <b style={mono}>{podAt(info.an + info.n - 1, (info.ad + info.n - 1) % 7)}</b>.</p>
+    info.n === 1
+      ? <p className="note">One POD number: <b style={mono}>{first}</b>.</p>
+      : <p className="note"><b>{info.n}</b> POD numbers, from <b style={mono}>{first}</b> to <b style={mono}>{podAt(info.an + info.n - 1, (info.ad + info.n - 1) % 7)}</b>.</p>
   );
   const bad = !!info.err;
 
@@ -207,14 +211,14 @@ export default function EntryPage({ customers = [], onSaved, onOpenRecords, onOp
               onKeyDown={blockNonDigit} onChange={onFirstChange} />
           </div>
           <div className="field">
-            <label htmlFor="last">Ending POD number</label>
+            <label htmlFor="last">Ending POD number (optional)</label>
             <input id="last" ref={lastRef} className={"mono" + (bad ? " bad" : "") + (jumped ? " jumped" : "")} type="text" inputMode="numeric" pattern="[0-9]*"
               maxLength={11} autoComplete="off" placeholder="11 digits" value={last}
               onKeyDown={blockNonDigit} onBlur={() => setJumped(false)} onChange={(e) => setLast(digits(e.target.value))} />
           </div>
           <div className="field">
-            <button className="primary" id="gen-btn" disabled={!info.n} onClick={generate}>
-              {info.n ? `Add ${info.n} rows` : "Add rows"}
+            <button className="primary" id="gen-btn" disabled={!info.n || !customerId} title={customerId ? undefined : "Select the customer first"} onClick={generate}>
+              {info.n ? (info.n === 1 ? "Add 1 row" : `Add ${info.n} rows`) : "Add rows"}
             </button>
           </div>
         </div>
@@ -251,7 +255,7 @@ export default function EntryPage({ customers = [], onSaved, onOpenRecords, onOp
               <p className="eyebrow" style={{ margin: 0 }}>Entries · {rows.length}</p>
               <span className="rule">
                 {customer
-                  ? <>Cover (under {PARCEL_FROM} g) ₹{customer.coverRate} · Parcel ({PARCEL_FROM} g+) ₹{customer.parcelRate} for {customer.slabGrams} g, +₹{customer.parcelExtra} per extra {customer.slabGrams} g · Bombay ₹{FLAT_RATES.Bombay} flat</>
+                  ? <>Cover ₹{customer.coverRate} · 250 g ₹{customer.rate250} · 500 g ₹{customer.rate500} · 1 kg ₹{customer.rate1000} (above 1 kg +₹{customer.rate250} per extra 250 g) · Bombay ₹{FLAT_RATES.Bombay} flat</>
                   : "Choose a customer to see the rates."}
               </span>
             </div>
@@ -290,7 +294,14 @@ export default function EntryPage({ customers = [], onSaved, onOpenRecords, onOp
                         onChange={(v) => patch(r.id, "dest", v)} onPick={(t) => pickDest(r.id, t)} /></td>
                       <td className="num"><input id={`w-${r.id}`} type="number" min="0" inputMode="numeric" style={{ textAlign: "right" }}
                         className={p.weight ? "bad" : ""} value={r.weight}
-                        onChange={(e) => patch(r.id, "weight", e.target.value)} aria-label="Weight in grams" /></td>
+                        onChange={(e) => patch(r.id, "weight", e.target.value)} aria-label="Weight in grams" />
+                        <div className="wchips noprint" style={{ display: "flex", gap: 4, justifyContent: "flex-end", marginTop: 2 }}>
+                          {[["Cover", 0], ["250", 250], ["500", 500], ["1 kg", 1000]].map(([label, val]) => (
+                            <button key={label} type="button" tabIndex={-1} className="ghost"
+                              style={{ fontSize: "0.7rem", padding: "1px 5px" }}
+                              onClick={() => patch(r.id, "weight", String(val))}>{label}</button>
+                          ))}
+                        </div></td>
                       <td className={"amt" + (a == null ? " empty" : "")}>
                         {a == null ? "—" : fmtRs(a)}
                         {a != null && <small className={"kind " + (isParcel(r.weight) ? "parcel" : "cover")}>{isParcel(r.weight) ? "Parcel" : "Cover"}</small>}

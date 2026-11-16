@@ -1,3 +1,34 @@
+// Any 401 from a data call means the login ended (15 minutes idle, or the program restarted).
+// The app listens for "pod-locked" and shows the door screen again.
+const nativeFetch = window.fetch.bind(window);
+window.fetch = async (input, init) => {
+  const res = await nativeFetch(input, init);
+  const url = typeof input === "string" ? input : input.url;
+  if (res.status === 401 && url.startsWith("/api/") && !url.startsWith("/api/auth/")) {
+    window.dispatchEvent(new Event("pod-locked"));
+  }
+  return res;
+};
+
+async function authCall(path, body) {
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await readJson(res);
+  if (!res.ok) throw new Error(data.message || "Something went wrong. Try again.");
+  return data;
+}
+
+export async function authStatus() {
+  const res = await fetch("/api/auth/status");
+  if (!res.ok) throw new Error("Could not reach the program.");
+  return readJson(res);
+}
+export const authLogin = (pin) => authCall("/api/auth/login", { pin });
+export const authLogout = () => authCall("/api/auth/logout");
+
 async function readJson(res) {
   try { return await res.json(); } catch { return {}; }
 }
@@ -17,17 +48,18 @@ export async function saveEntries(entries) {
   return body;
 }
 
-export function query(month, search, customerId) {
+export function query(from, to, search, customerId) {
   const p = new URLSearchParams();
   if (customerId) p.set("customerId", customerId);
-  if (month && month !== "all") p.set("month", month);
+  if (from) p.set("from", from);
+  if (to) p.set("to", to);
   if (search && search.trim()) p.set("search", search.trim());
   const s = p.toString();
   return s ? "?" + s : "";
 }
 
-export async function fetchEntries(month, search, customerId) {
-  const res = await fetch("/api/entries" + query(month, search, customerId));
+export async function fetchEntries(from, to, search, customerId) {
+  const res = await fetch("/api/entries" + query(from, to, search, customerId));
   if (!res.ok) {
     const body = await readJson(res);
     throw new Error(body.message || "Could not load records. Is the backend running?");
@@ -36,9 +68,10 @@ export async function fetchEntries(month, search, customerId) {
 }
 
 // The server hands out invoice numbers (1, 2, 3 ...). The same customer + month always gets the same number back.
-export async function getInvoiceNo(month, customerId) {
+export async function getInvoiceNo(from, to, customerId) {
   const p = new URLSearchParams({ customerId });
-  if (month && month !== "all") p.set("month", month);
+  if (from) p.set("from", from);
+  if (to) p.set("to", to);
   const res = await fetch("/api/invoices/number?" + p.toString(), { method: "POST" });
   if (!res.ok) {
     const body = await readJson(res);
@@ -47,7 +80,7 @@ export async function getInvoiceNo(month, customerId) {
   return (await res.json()).invoiceNo;
 }
 
-export const exportUrl = (month, search, customerId) => "/api/entries/export.xlsx" + query(month, search, customerId);
+export const exportUrl = (from, to, search, customerId) => "/api/entries/export.xlsx" + query(from, to, search, customerId);
 
 async function failWith(res, fallback) {
   const body = await readJson(res);
@@ -71,8 +104,8 @@ export async function deleteEntry(id) {
   if (!res.ok) throw await failWith(res, "Could not delete this entry.");
 }
 
-export async function deleteMatching(month, search, customerId) {
-  const res = await fetch("/api/entries" + query(month, search, customerId), { method: "DELETE" });
+export async function deleteMatching(from, to, search, customerId) {
+  const res = await fetch("/api/entries" + query(from, to, search, customerId), { method: "DELETE" });
   if (!res.ok) throw await failWith(res, "Could not delete these entries.");
   return res.json();
 }

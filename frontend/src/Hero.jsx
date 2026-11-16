@@ -66,7 +66,7 @@ export function Backdrop({ dim }) {
   );
 }
 
-export default function Hero({ children }) {
+export default function Hero({ children, action }) {
   const [logoOk, setLogoOk] = useState(true);
   const today = new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 
@@ -95,6 +95,7 @@ export default function Hero({ children }) {
           <span className="hero-section">Billing Entry</span>
           <span className="date-chip">{today}</span>
         </div>
+        {action && <div className="hero-action">{action}</div>}
       </div>
       {children}
     </header>

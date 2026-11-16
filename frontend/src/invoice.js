@@ -1,6 +1,10 @@
 // Your agency details as they print at the top and bottom of the bill. Change them here if they ever change.
 export const SELLER = {
   name: "G.P.AGENCY",
+  courier: "Franch Express Courier pvt Ltd", // top line of the bill header
+  town: "Erode",                             // printed on the customer line; the pincode is added after a hyphen
+  franchisee: "Franchisee",                  // left of the second header line
+  agency: "G.P. Agency",                     // right of the second header line
   address: "NO.205 N.M.S COMPOUND.ERODE.1",
   gstin: "33BAGPP6715GIZQ",
   signFor: "G.P Agency",
@@ -49,12 +53,10 @@ export function dotDate(iso) {
   return `${d}.${m}.${y}`;
 }
 
-// Bill period: the whole month on screen, or from the 1st of the first month to the last day of the last month when "All months".
-const pad = (n) => String(n).padStart(2, "0");
-const lastDay = (ym) => { const [y, m] = ym.split("-").map(Number); return `${ym}-${pad(new Date(y, m, 0).getDate())}`; };
-export function periodOf(month, rows) {
-  if (month && month !== "all") return { from: `${month}-01`, to: lastDay(month) };
+// Bill period: the From and To dates on the Records page. A blank side is taken from the first or last entry.
+export function periodOf(from, to, rows) {
+  if (from && to) return { from, to };
   const ds = rows.map((r) => r.entryDate).sort();
-  if (!ds.length) return { from: "", to: "" };
-  return { from: ds[0].slice(0, 7) + "-01", to: lastDay(ds[ds.length - 1].slice(0, 7)) };
+  if (!ds.length) return { from: from || "", to: to || "" };
+  return { from: from || ds[0], to: to || ds[ds.length - 1] };
 }

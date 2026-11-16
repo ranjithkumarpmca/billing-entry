@@ -5,10 +5,11 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Each customer has their own rates.
+ * Each customer types their own rates: cover, 250 g, 500 g and 1 kg.
  * A consignment from PARCEL_FROM_GRAMS up is a parcel, anything lighter is a cover.
- *   cover  : the customer's flat cover rate
- *   parcel : parcel rate for the first slab, plus the extra rate for every further slab (or part of it)
+ *   cover      : the customer's cover rate
+ *   parcel     : up to 250 g -> rate 250; up to 500 g -> rate 500; up to 1000 g -> rate 1000
+ *   above 1 kg : rate 1000 + rate 250 for every extra 250 g (or part of it)
  * Bombay is a flat Rs 150 whatever the weight or customer.
  * Keep PARCEL_FROM_GRAMS and the rules in step with frontend/src/logic.js.
  */
@@ -34,8 +35,10 @@ public final class AmountCalculator {
         if (!isParcel(weightGrams)) {
             return customer.getCoverRate();
         }
-        int slab = Math.max(1, customer.getSlabGrams());
-        int slabs = (weightGrams + slab - 1) / slab;
-        return customer.getParcelRate() + (slabs - 1) * customer.getParcelExtra();
+        if (weightGrams <= 250) return customer.getRate250();
+        if (weightGrams <= 500) return customer.getRate500();
+        if (weightGrams <= 1000) return customer.getRate1000();
+        int extraSteps = (weightGrams - 1000 + 249) / 250; // every 250 g above 1 kg, a part counts as a whole step
+        return customer.getRate1000() + extraSteps * customer.getRate250();
     }
 }

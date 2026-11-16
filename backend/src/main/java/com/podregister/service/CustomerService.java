@@ -70,11 +70,17 @@ public class CustomerService {
         String name = r.name() == null ? "" : r.name().trim();
         String place = r.place() == null ? "" : r.place().trim();
         String gstin = r.gstin() == null ? "" : r.gstin().trim().toUpperCase(Locale.ROOT);
+        String address1 = r.address1() == null ? "" : r.address1().trim();
+        String address2 = r.address2() == null ? "" : r.address2().trim();
+        String city = r.city() == null ? "" : r.city().trim();
         if (name.isEmpty() || name.length() > 150) {
             throw new IllegalArgumentException("Customer name is required.");
         }
         if (place.length() > 100) {
             throw new IllegalArgumentException("Place is too long.");
+        }
+        if (address1.length() > 150 || address2.length() > 150 || city.length() > 150) {
+            throw new IllegalArgumentException("Address and city must be 150 characters or less.");
         }
         if (!gstin.isEmpty() && !GSTIN.matcher(gstin).matches()) {
             throw new IllegalArgumentException("GSTIN must be 15 letters and digits.");
@@ -84,15 +90,18 @@ public class CustomerService {
             throw new IllegalArgumentException("A customer named \"" + name + "\" already exists.");
         }
         int cover = rate(r.coverRate(), c.getCoverRate(), "Cover rate", 1);
-        int parcel = rate(r.parcelRate(), c.getParcelRate(), "Parcel rate", 1);
-        int extra = rate(r.parcelExtra(), c.getParcelExtra(), "Parcel extra rate", 0);
-        int slab = rate(r.slabGrams(), c.getSlabGrams(), "Slab grams", 1);
+        int r250 = rate(r.rate250(), c.getRate250(), "250 g rate", 1);
+        int r500 = rate(r.rate500(), c.getRate500(), "500 g rate", 1);
+        int r1000 = rate(r.rate1000(), c.getRate1000(), "1 kg rate", 1);
         c.setName(name);
         c.setPlace(place);
         c.setGstin(gstin);
+        c.setAddress1(address1);
+        c.setAddress2(address2);
+        c.setCity(city);
         c.setCoverRate(cover);
-        c.setParcelRate(parcel);
-        c.setParcelExtra(extra);
-        c.setSlabGrams(slab);
+        c.setRate250(r250);
+        c.setRate500(r500);
+        c.setRate1000(r1000);
     }
 }

@@ -42,11 +42,12 @@ public final class ExcelExporter {
 
     /**
      * @param customer  the customer the bill is for, or null when the export covers all customers
-     * @param month     "yyyy-MM", or blank / "all"
+     * @param from      first day of the bill period, or null for the first entry
+     * @param to        last day of the bill period, or null for the last entry
      * @param invoiceNo the invoice number for this customer and month, or null when there is no single customer
      */
     public static byte[] build(List<PodEntry> entries, Map<Long, String> customerNames,
-                               Customer customer, String month, Long invoiceNo) throws IOException {
+                               Customer customer, LocalDate from, LocalDate to, Long invoiceNo) throws IOException {
         try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = wb.createSheet("POD Register");
 
@@ -110,9 +111,10 @@ public final class ExcelExporter {
             }
 
             // ---------- header block, same lines as the printed bill ----------
-            LocalDate[] period = periodOf(entries, month);
+            LocalDate[] period = periodOf(entries, from, to);
             int r = 0;
-            r = line(sheet, r, 0, LAST_COL, SELLER_NAME, titleStyle);
+            r = line(sheet, r, 0, LAST_COL, "Franch Express Courier pvt Ltd", titleStyle);
+            r = pair(sheet, r, "Franchisee", "G.P. Agency", centre);
             r = line(sheet, r, 0, LAST_COL, SELLER_ADDRESS, centre);
             r = line(sheet, r, 0, LAST_COL, "GSTIN:" + SELLER_GSTIN, centre);
             r = pair(sheet, r, "CUSTOMER NAME : " + (customer != null ? customer.getName() : "All customers"),
@@ -237,19 +239,16 @@ public final class ExcelExporter {
         return r + 1;
     }
 
-    /** The month on screen, or from the 1st of the first month to the last day of the last month when "all". */
-    static LocalDate[] periodOf(List<PodEntry> entries, String month) {
-        if (month != null && !month.isBlank() && !month.equalsIgnoreCase("all")) {
-            YearMonth ym = YearMonth.parse(month.trim());
-            return new LocalDate[] {ym.atDay(1), ym.atEndOfMonth()};
-        }
-        if (entries.isEmpty()) return new LocalDate[] {null, null};
+    /** The period on screen. A blank side is taken from the first or last entry date. */
+    static LocalDate[] periodOf(List<PodEntry> entries, LocalDate from, LocalDate to) {
+        if (from != null && to != null) return new LocalDate[] {from, to};
+        if (entries.isEmpty()) return new LocalDate[] {from, to};
         LocalDate min = entries.get(0).getEntryDate(), max = min;
         for (PodEntry e : entries) {
             if (e.getEntryDate().isBefore(min)) min = e.getEntryDate();
             if (e.getEntryDate().isAfter(max)) max = e.getEntryDate();
         }
-        return new LocalDate[] {YearMonth.from(min).atDay(1), YearMonth.from(max).atEndOfMonth()};
+        return new LocalDate[] {from != null ? from : min, to != null ? to : max};
     }
 
     /** 2026-04-02 -> 02.04.2026 */
