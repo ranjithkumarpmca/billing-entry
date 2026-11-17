@@ -80,48 +80,54 @@ export default function CustomersPage({ customers, state, onChanged }) {
     }
   };
 
+  // Add/Update stays disabled until every mandatory (*) field is filled.
+  const canSave = form.name.trim() !== "" && [form.coverRate, form.rate250, form.rate500, form.rate1000].every((v) => Number(v) >= 1);
+
   return (
     <>
       <section className="panel" aria-label="Add customer">
+        {!canSave && !busy && (
+          <p className="note" style={{ margin: "0 0 8px", textAlign: "right" }}>* Fill the required fields to enable Add customer</p>
+        )}
         <form className="gen cust-form" onSubmit={submit}>
           <div className="field">
-            <label htmlFor="c-name">Customer name</label>
+            <label htmlFor="c-name">Customer name <span className="req" aria-hidden="true">*</span></label>
             <input id="c-name" value={form.name} maxLength={150} autoComplete="off" placeholder="e.g. SBI AMCC" onChange={(e) => patch("name", e.target.value)} />
           </div>
           <div className="field">
-            <label htmlFor="c-gstin">GST number</label>
+            <label htmlFor="c-gstin">GST number <span className="opt">(optional)</span></label>
             <input id="c-gstin" className="mono" value={form.gstin} maxLength={15} autoComplete="off" placeholder="15 characters" onChange={(e) => patch("gstin", e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, ""))} />
           </div>
           <div className="field">
-            <label htmlFor="c-addr1">Address 1</label>
+            <label htmlFor="c-addr1">Address 1 <span className="opt">(optional)</span></label>
             <input id="c-addr1" value={form.address1} maxLength={150} autoComplete="off" onChange={(e) => patch("address1", e.target.value)} />
           </div>
           <div className="field">
-            <label htmlFor="c-addr2">Address 2</label>
+            <label htmlFor="c-addr2">Address 2 <span className="opt">(optional)</span></label>
             <input id="c-addr2" value={form.address2} maxLength={150} autoComplete="off" onChange={(e) => patch("address2", e.target.value)} />
           </div>
           <div className="field">
-            <label htmlFor="c-city">Pincode</label>
+            <label htmlFor="c-city">Pincode <span className="opt">(optional)</span></label>
             <input id="c-city" inputMode="numeric" value={form.city} autoComplete="off" placeholder="e.g. 638001" onChange={(e) => patch("city", e.target.value.replace(/\D/g, ""))} />
           </div>
           <div className="field">
-            <label htmlFor="c-cover" title="Cover (under 250 g)">Cover ₹</label>
+            <label htmlFor="c-cover" title="Cover (under 250 g)">Cover ₹ <span className="req" aria-hidden="true">*</span></label>
             <input id="c-cover" type="number" min="1" inputMode="numeric" value={form.coverRate} placeholder="e.g. 25" onChange={(e) => patch("coverRate", e.target.value)} />
           </div>
           <div className="field">
-            <label htmlFor="c-r250" title="Parcel up to 250 g">250 g ₹</label>
+            <label htmlFor="c-r250" title="Parcel up to 250 g">250 g ₹ <span className="req" aria-hidden="true">*</span></label>
             <input id="c-r250" type="number" min="1" inputMode="numeric" value={form.rate250} onChange={(e) => patch("rate250", e.target.value)} />
           </div>
           <div className="field">
-            <label htmlFor="c-r500" title="Parcel 251 g to 500 g">500 g ₹</label>
+            <label htmlFor="c-r500" title="Parcel 251 g to 500 g">500 g ₹ <span className="req" aria-hidden="true">*</span></label>
             <input id="c-r500" type="number" min="1" inputMode="numeric" value={form.rate500} onChange={(e) => patch("rate500", e.target.value)} />
           </div>
           <div className="field">
-            <label htmlFor="c-r1000" title="Parcel 501 g to 1 kg">1 kg ₹</label>
+            <label htmlFor="c-r1000" title="Parcel 501 g to 1 kg">1 kg ₹ <span className="req" aria-hidden="true">*</span></label>
             <input id="c-r1000" type="number" min="1" inputMode="numeric" value={form.rate1000} onChange={(e) => patch("rate1000", e.target.value)} />
           </div>
           <div className="field cust-actions">
-            <button className="primary" id="cust-save" type="submit" disabled={busy}>
+            <button className="primary" id="cust-save" type="submit" disabled={busy || !canSave} style={{ whiteSpace: "nowrap", padding: "9px 8px" }}>
               {busy ? "Saving…" : editId ? "Update customer" : "Add customer"}
             </button>
             {editId && <button type="button" className="ghost" disabled={busy} onClick={() => { reset(); setMsg(null); }}>Cancel</button>}

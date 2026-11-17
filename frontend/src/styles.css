@@ -473,3 +473,7 @@ small.kind.parcel { color: var(--accent); font-weight: 600; }
 .auth-credit b { color: #f2a900; }
 .auth-scene.unlocking .auth-brand { opacity: 0; transition: opacity 0.3s ease; }
 .auth-scene.unlocking .auth-credit { opacity: 0; transition: opacity 0.3s ease; }
+
+/* Customer form: red star = mandatory, grey "(optional)" = may be left empty */
+.req { color: #c0362c; font-weight: 700; margin-left: 2px; }
+.opt { color: var(--muted); font-weight: 400; font-size: 0.72rem; margin-left: 4px; white-space: nowrap; }
