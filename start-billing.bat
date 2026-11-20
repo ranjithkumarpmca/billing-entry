@@ -1,5 +1,5 @@
 @echo off
 title Billing Entry - Don't close while working
 cd /d "%~dp0backend\target"
-start "" /min powershell -NoProfile -Command "$i=0; do { Start-Sleep 1; $i++; try { $c=(Invoke-WebRequest -UseBasicParsing http://localhost:8080/api/auth/status -TimeoutSec 2).StatusCode } catch { $c=0 } } while ($c -ne 200 -and $i -lt 90); Start-Process chrome 'http://localhost:8080'"
+start "" /min powershell -NoProfile -Command "$i=0; do { Start-Sleep 1; $i++; try { $c=(Invoke-WebRequest -UseBasicParsing http://localhost:8080/api/auth/status -TimeoutSec 2).StatusCode } catch { $c=0 } } while ($c -ne 200 -and $i -lt 90); $ch=@((Join-Path $env:ProgramFiles 'Google\Chrome\Application\chrome.exe'), (Join-Path ${env:ProgramFiles(x86)} 'Google\Chrome\Application\chrome.exe'), (Join-Path $env:LOCALAPPDATA 'Google\Chrome\Application\chrome.exe')) | Where-Object { Test-Path $_ } | Select-Object -First 1; $p=Join-Path $env:LOCALAPPDATA 'BillingEntry\app-profile'; $a='--app=http://localhost:8080 --user-data-dir=' + $p; if ($ch) { Start-Process $ch -ArgumentList $a } else { Start-Process 'msedge' -ArgumentList $a }"
 java -jar billing-entry-1.0.0.jar

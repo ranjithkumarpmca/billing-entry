@@ -27,7 +27,7 @@ const mkRow = (pod, date, batch) => ({ id: nextId++, pod, date, batch, dest: "",
 const isSbi = (name) => String(name || "").toLowerCase().replace(/[\s.\-_]/g, "").startsWith("sbi");
 const MAX_SAVE = 5000; // the server accepts at most this many entries in one save
 
-export default function EntryPage({ customers = [], onSaved, onOpenRecords, onOpenCustomers, onHasRows }) {
+export default function EntryPage({ customers = [], onSaved, onOpenRecords, onOpenCustomers, onHasRows, presetCustomer }) {
   const [draft] = useState(loadDraft); // read once, when the page opens
   const [restored, setRestored] = useState(draft ? draft.rows.length : 0);
   const [rows, setRows] = useState(() => {
@@ -68,6 +68,17 @@ export default function EntryPage({ customers = [], onSaved, onOpenRecords, onOp
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [rows.length]);
+
+  // "Create Bill" on the dashboard: select that customer. Rows of another customer are kept, so only apply when the page is empty.
+  useEffect(() => {
+    if (!presetCustomer) return;
+    const id = String(presetCustomer.id);
+    if (rows.length > 0 && customerId !== id) {
+      setMsg({ kind: "err", text: "Save or clear the entries below first, then choose the customer again." });
+      return;
+    }
+    setCustomerId(id);
+  }, [presetCustomer]);
 
   // One customer only: pick it for you. A deleted customer is dropped from the box.
   useEffect(() => {

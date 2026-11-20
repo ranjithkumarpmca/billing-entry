@@ -7,6 +7,7 @@ E:\billing-entry\backend\src\main\java\com\podregister\repo\PodEntryRepository.j
 E:\billing-entry\backend\src\main\java\com\podregister\service\AmountCalculator.java
 E:\billing-entry\backend\src\main\java\com\podregister\service\AuthService.java
 E:\billing-entry\backend\src\main\java\com\podregister\service\CustomerService.java
+E:\billing-entry\backend\src\main\java\com\podregister\service\DashboardService.java
 E:\billing-entry\backend\src\main\java\com\podregister\service\DuplicatePodException.java
 E:\billing-entry\backend\src\main\java\com\podregister\service\EntryService.java
 E:\billing-entry\backend\src\main\java\com\podregister\service\ExcelExporter.java
@@ -18,6 +19,7 @@ E:\billing-entry\backend\src\main\java\com\podregister\web\BulkRequest.java
 E:\billing-entry\backend\src\main\java\com\podregister\web\CustomerController.java
 E:\billing-entry\backend\src\main\java\com\podregister\web\CustomerRequest.java
 E:\billing-entry\backend\src\main\java\com\podregister\web\CustomerResponse.java
+E:\billing-entry\backend\src\main\java\com\podregister\web\DashboardController.java
 E:\billing-entry\backend\src\main\java\com\podregister\web\EntryController.java
 E:\billing-entry\backend\src\main\java\com\podregister\web\EntryRequest.java
 E:\billing-entry\backend\src\main\java\com\podregister\web\EntryResponse.java

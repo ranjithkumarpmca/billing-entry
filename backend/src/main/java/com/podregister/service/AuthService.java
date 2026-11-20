@@ -34,7 +34,7 @@ public class AuthService {
     private static final String DEFAULT_BILLER_PIN = "bill";
 
     private static final int ITERATIONS = 120_000;
-    private static final int MAX_WRONG = 5;
+    private static final int MAX_WRONG = 3;
     private static final Duration LOCK_FOR = Duration.ofSeconds(60);
 
     public record Result(String token, String role) {}
@@ -73,6 +73,8 @@ public class AuthService {
             if (wrongTries >= MAX_WRONG) {
                 wrongTries = 0;
                 lockedUntil = Instant.now().plus(LOCK_FOR);
+                // Show the lock message on the same wrong attempt that triggers it.
+                throw new IllegalArgumentException("Too many wrong passwords. Wait a minute and try again.");
             }
             return Optional.empty();
         }
